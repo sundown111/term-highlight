@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>term-highlight demo</title>
+    <style>
+      :root {
+        --bg: #fbfaf7;
+        --fg: #1d1c1a;
+        --muted: #6b675f;
+        --line: #e4e0d8;
+        --panel: #ffffff;
+        --accent: #1f5f8b;
+        --ok: #2f6b3a;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #151513;
+          --fg: #ecebe6;
+          --muted: #a29e95;
+          --line: #2f2e2a;
+          --panel: #1d1c1a;
+          --accent: #7cb7e0;
+          --ok: #8fd19a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          16px/1.6 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      header,
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+      header {
+        padding-top: 40px;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+      }
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 0;
+        margin-top: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+      }
+      input[type='search'] {
+        flex: 1 1 220px;
+        min-width: 0;
+        font: inherit;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+        color: var(--fg);
+      }
+      input[type='search']:focus-visible,
+      button:focus-visible,
+      input[type='checkbox']:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      button {
+        font: inherit;
+        min-height: 36px;
+        padding: 6px 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+        color: var(--fg);
+        cursor: pointer;
+      }
+      .count {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        min-width: 7ch;
+      }
+      .groups {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        width: 100%;
+        font-size: 0.9rem;
+      }
+      .groups label {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        cursor: pointer;
+      }
+      .swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .proof {
+        margin: 16px 0;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        font-size: 0.92rem;
+      }
+      .proof strong {
+        color: var(--ok);
+        font-variant-numeric: tabular-nums;
+      }
+      .hint {
+        min-height: 1.6em;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      article {
+        padding-bottom: 60vh;
+      }
+      article h2 {
+        font-size: 1.15rem;
+        margin-top: 28px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>term-highlight</h1>
+      <p>Highlights in the article below are painted with no span, mark, or div.</p>
+    </header>
+
+    <main>
+      <div class="toolbar" role="search">
+        <input
+          id="q"
+          type="search"
+          placeholder='Search, e.g. range "custom highlight"'
+          aria-label="Search the article"
+        />
+        <button id="prev" type="button" aria-label="Previous match">↑</button>
+        <button id="next" type="button" aria-label="Next match">↓</button>
+        <span id="count" class="count" aria-live="polite"></span>
+        <div class="groups" id="groups"></div>
+      </div>
+
+      <div class="proof" id="proof">
+        Strategy: <strong id="strategy">…</strong> · elements inside the article:
+        <strong id="elements">…</strong> · DOM mutations since load:
+        <strong id="mutations">0</strong>
+      </div>
+      <p class="hint" id="hint">Hover or click a highlighted term.</p>
+
+      <article id="article">
+        <h2>The problem</h2>
+        <p>
+          Most highlight libraries wrap every match in a <code>&lt;mark&gt;</code> or
+          <code>&lt;span&gt;</code>. That splits text nodes, breaks event listeners, confuses React
+          and other frameworks during reconciliation, corrupts
+          <code>contenteditable</code> selections, and can shift layout. Undoing it means walking
+          the DOM again and hoping nothing else changed.
+        </p>
+        <h2>The solution</h2>
+        <p>
+          The CSS Custom Highlight API lets a page register a set of Range objects under a name and
+          style them with <code>::highlight(name)</code>. The browser paints the colour directly on
+          the text. Nothing is inserted, so the document tree stays exactly as you wrote it. This
+          library finds matches, builds the ranges, and keeps them in sync for you.
+        </p>
+        <h2>What you get</h2>
+        <p>
+          Groups with their own colour and priority, matches that cross element boundaries like
+          <em>custom</em> <strong>highlight</strong>, accent-insensitive search so
+          <em>cafe</em> finds café and résumé, find-in-page navigation with a live count, hover and
+          click callbacks for tooltips, and a strict mode that never touches the DOM even on old
+          browsers. Released in 2026, version 0.2.0 supports Chrome 105, Safari 17.2, and Firefox
+          140 or newer.
+        </p>
+        <h2>Glossary</h2>
+        <p>
+          A Range is a start and end point in the document. A Highlight is a set of ranges painted
+          together. The registry is the map at CSS.highlights where each highlight is stored by
+          name.
+        </p>
+      </article>
+    </main>
+
+    <script type="module">
+      import { createHighlighter, connectSearchInput } from '../dist/index.js';
+
+      const article = document.getElementById('article');
+      const definitions = {
+        range: 'A start and end point in the document.',
+        highlight: 'A set of ranges painted together.',
+        registry: 'CSS.highlights: where highlights are stored by name.',
+      };
+
+      const groups = [
+        {
+          name: 'glossary',
+          terms: Object.keys(definitions),
+          wholeWord: 'unicode',
+          style: { textDecoration: 'underline dotted 2px', textUnderlineOffset: '3px' },
+          label: 'Glossary terms',
+          swatch: 'transparent',
+        },
+        {
+          name: 'numbers',
+          terms: [/\d+(?:\.\d+)*/],
+          style: { backgroundColor: '#cfe6ff', color: '#0b2a44' },
+          label: 'Numbers',
+          swatch: '#cfe6ff',
+        },
+      ];
+
+      const hint = document.getElementById('hint');
+      const h = createHighlighter({
+        root: article,
+        fallback: 'none', // never wrap text, even where the API is missing
+        groups: groups.map(({ label, swatch, ...g }) => g),
+        currentStyle: { backgroundColor: '#ff9632', color: '#000' },
+        onHighlightHover: (m) => {
+          hint.textContent = m
+            ? m.group === 'glossary'
+              ? `${m.text}: ${definitions[m.text.toLowerCase()]}`
+              : `“${m.text}” (${m.group})`
+            : 'Hover or click a highlighted term.';
+        },
+        onHighlightClick: (m) => h.goTo(m.index),
+      });
+
+      // Search box: type to highlight, Enter / Shift+Enter to step, Escape to clear.
+      const count = document.getElementById('count');
+      // Shareable searches: ?q=range prefills the box.
+      const initial = new URLSearchParams(location.search).get('q');
+      if (initial) document.getElementById('q').value = initial;
+      const search = connectSearchInput(document.getElementById('q'), h, {
+        ignoreDiacritics: true,
+        style: { backgroundColor: '#fff3a0', color: '#1d1c1a' },
+        onChange: (s) => {
+          count.textContent = document.getElementById('q').value
+            ? s.total
+              ? `${s.position || '–'} of ${s.total}`
+              : 'No results'
+            : '';
+        },
+      });
+      document.getElementById('next').onclick = () => search.next();
+      document.getElementById('prev').onclick = () => search.previous();
+
+      // Group toggles.
+      const box = document.getElementById('groups');
+      for (const g of [...groups, { name: 'search', label: 'Search results', swatch: '#fff3a0' }]) {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.onchange = () => h.toggleGroup(g.name, cb.checked);
+        const sw = document.createElement('span');
+        sw.className = 'swatch';
+        sw.style.background = g.swatch;
+        sw.style.border = '1px solid var(--line)';
+        label.append(cb, sw, g.label);
+        box.append(label);
+      }
+
+      // Proof that nothing is inserted into the article.
+      document.getElementById('strategy').textContent =
+        h.activeStrategy === 'css-highlight'
+          ? 'CSS Custom Highlight API'
+          : 'none (this browser lacks the API, so nothing is painted)';
+      const elements = document.getElementById('elements');
+      const showCount = () => (elements.textContent = article.querySelectorAll('*').length);
+      showCount();
+      let mutations = 0;
+      new MutationObserver((records) => {
+        mutations += records.length;
+        document.getElementById('mutations').textContent = mutations;
+        showCount();
+      }).observe(article, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+      });
+
+      window.h = h; // play with it in the console
+      window.search = search;
+    </script>
+  </body>
+</html>

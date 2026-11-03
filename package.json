@@ -1,7 +1,7 @@
 {
   "name": "term-highlight",
-  "version": "0.1.0",
-  "description": "Highlight words, phrases, and regex patterns inside a DOM subtree using the CSS Custom Highlight API or DOM-span wrapping. Zero runtime dependencies, TypeScript, ESM + CJS.",
+  "version": "0.2.0",
+  "description": "Highlight words, phrases, and regex patterns in a page without inserting span, mark, or any other element, using the CSS Custom Highlight API (with an optional <mark> fallback). Zero runtime dependencies, TypeScript, ESM + CJS.",
   "keywords": [
     "highlight",
     "highlighter",
@@ -13,18 +13,22 @@
     "search",
     "regex",
     "text",
-    "typescript"
+    "typescript",
+    "find-in-page",
+    "search-highlight",
+    "no-dom-mutation",
+    "diacritics"
   ],
   "license": "MIT",
   "author": "Kev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kevinlukose/term-highlight.git"
+    "url": "git+https://github.com/sundown111/term-highlight.git"
   },
   "bugs": {
-    "url": "https://github.com/kevinlukose/term-highlight/issues"
+    "url": "https://github.com/sundown111/term-highlight/issues"
   },
-  "homepage": "https://github.com/kevinlukose/term-highlight#readme",
+  "homepage": "https://github.com/sundown111/term-highlight#readme",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -60,6 +64,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "smoke": "node scripts/smoke.mjs && node scripts/smoke.cjs",
+    "demo": "npm run build && node scripts/serve.mjs",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && npm run smoke",
     "prepublishOnly": "npm run build"
   },

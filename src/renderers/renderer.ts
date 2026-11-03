@@ -7,7 +7,8 @@ export interface RendererContext {
   instanceId: string;
   groups: HighlightGroup[];
   currentStyle: Partial<CSSStyleDeclaration>;
-  onClick?: (match: MatchInfo) => void;
+  onClick?: (match: MatchInfo, event: MouseEvent) => void;
+  onHover?: (match: MatchInfo | undefined, event: MouseEvent) => void;
 }
 
 /**
@@ -16,7 +17,7 @@ export interface RendererContext {
  * on {@link Renderer.destroy}.
  */
 export interface Renderer {
-  readonly name: 'css-highlight' | 'dom-span';
+  readonly name: 'css-highlight' | 'dom-span' | 'none';
   /**
    * Render the given matches, replacing anything previously rendered.
    * @param matches resolved matches in document order
@@ -27,6 +28,13 @@ export interface Renderer {
   setGroupVisible(name: string, visible: boolean): void;
   /** Mark a single match as the "current" one (or clear it with `undefined`). */
   setCurrent(match: MatchInfo | undefined): void;
+  /**
+   * Replace the group configuration. Called between `clear()` and the next
+   * `render()` when groups are added, removed, or changed at runtime.
+   */
+  setGroups(groups: HighlightGroup[]): void;
+  /** The visible match under a viewport point, if any. */
+  matchAtPoint(x: number, y: number): MatchInfo | undefined;
   /** Bounding client rect of a rendered match, or `null` if not measurable. */
   getMatchRect(match: MatchInfo): DOMRect | null;
   /**
