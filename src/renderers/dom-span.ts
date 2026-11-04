@@ -2,6 +2,7 @@ import type { HighlightGroup, MatchInfo } from '../types.js';
 import type { TextModel } from '../matcher.js';
 import type { Renderer, RendererContext } from './renderer.js';
 import { styleToCssText } from '../utils.js';
+import { attachPointerHandlers } from './pointer.js';
 
 /** A slice of a single text node covered by one match. */
 interface Piece {
@@ -32,18 +33,58 @@ export class DomSpanRenderer implements Renderer {
   private currentIndex: number | undefined;
 
   private styleEl: HTMLStyleElement | undefined;
-  private readonly clickListener: (event: MouseEvent) => void;
+  private readonly detachPointer: () => void;
+  private classCounter = 0;
 
   constructor(ctx: RendererContext) {
     this.ctx = ctx;
     this.doc = ctx.root.ownerDocument;
-    ctx.groups.forEach((g, i) => {
+    this.setGroups(ctx.groups);
+    this.detachPointer = attachPointerHandlers(ctx, (e) => this.matchFromTarget(e.target));
+  }
+
+  setGroups(groups: HighlightGroup[]): void {
+    this.ctx.groups = groups;
+    this.groupConfig.clear();
+    const names = new Set(groups.map((g) => g.name));
+    for (const name of [...this.groupClass.keys()]) {
+      if (!names.has(name)) this.groupClass.delete(name);
+    }
+    for (const name of [...this.visible.keys()]) {
+      if (!names.has(name)) this.visible.delete(name);
+    }
+    for (const g of groups) {
       this.groupConfig.set(g.name, g);
-      this.groupClass.set(g.name, `${ctx.instanceId}-g${i}`);
+      // Class names are generated, never derived from the group name, so any
+      // group name is safe to use.
+      if (!this.groupClass.has(g.name)) {
+        this.groupClass.set(g.name, `${this.ctx.instanceId}-g${this.classCounter++}`);
+      }
       if (!this.visible.has(g.name)) this.visible.set(g.name, true);
-    });
-    this.clickListener = (event: MouseEvent): void => this.handleClick(event);
-    ctx.root.addEventListener('click', this.clickListener);
+    }
+  }
+
+  matchAtPoint(x: number, y: number): MatchInfo | undefined {
+    const doc = this.doc as Document & { elementFromPoint?: Document['elementFromPoint'] };
+    if (typeof doc.elementFromPoint !== 'function') return undefined;
+    return this.matchFromTarget(doc.elementFromPoint(x, y));
+  }
+
+  private matchFromTarget(target: EventTarget | null): MatchInfo | undefined {
+    const el = target as Element | null;
+    if (!el || typeof el.closest !== 'function') return undefined;
+    let mark = el.closest<HTMLElement>(
+      `mark[data-th-instance="${this.ctx.instanceId}"][data-match-index]`
+    );
+    // Skip wrappers of hidden groups so they behave like plain text.
+    while (mark && this.visible.get(mark.getAttribute('data-group') ?? '') === false) {
+      mark =
+        mark.parentElement?.closest<HTMLElement>(
+          `mark[data-th-instance="${this.ctx.instanceId}"][data-match-index]`
+        ) ?? null;
+    }
+    if (!mark || !this.ctx.root.contains(mark)) return undefined;
+    return this.matchesByIndex.get(Number(mark.getAttribute('data-match-index')));
   }
 
   private currentClass(): string {
@@ -209,7 +250,7 @@ export class DomSpanRenderer implements Renderer {
   }
 
   destroy(): void {
-    this.ctx.root.removeEventListener('click', this.clickListener);
+    this.detachPointer();
     this.unwrapAll();
     this.matchSpans.clear();
     this.groupSpans.clear();
@@ -255,17 +296,5 @@ export class DomSpanRenderer implements Renderer {
     // Declared last so it wins over group rules for the current match.
     rules.push(`mark[data-th-instance="${id}"].${this.currentClass()} { ${currentCss} }`);
     this.styleEl.textContent = rules.join('\n');
-  }
-
-  private handleClick(event: MouseEvent): void {
-    if (!this.ctx.onClick) return;
-    const target = event.target as Element | null;
-    const mark = target?.closest<HTMLElement>(
-      `mark[data-th-instance="${this.ctx.instanceId}"][data-match-index]`
-    );
-    if (!mark) return;
-    const index = Number(mark.getAttribute('data-match-index'));
-    const match = this.matchesByIndex.get(index);
-    if (match) this.ctx.onClick(match);
   }
 }

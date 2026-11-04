@@ -6,6 +6,52 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-03
+
+### Added
+
+- `connectSearchInput(input, highlighter, options)`: highlight-as-you-type
+  search box with Enter / Shift+Enter navigation, Escape to clear, debounce,
+  IME-safe key handling, and an `onChange(stats, current)` callback for
+  "3 of 12" counters. Returns `next`, `previous`, `refresh`, `reset`, and
+  `disconnect`.
+- `parseQuery(query, options)`: turns search-box text into terms (words, quoted
+  phrases, optional `/regex/`).
+- `strategy: 'none'` and `fallback: 'dom-span' | 'none'`. With
+  `fallback: 'none'` the DOM is never modified, even without the CSS Custom
+  Highlight API.
+- Runtime group management: `setTerms`, `addGroup`, `updateGroup`,
+  `removeGroup`, `clear`, `getGroups`.
+- Navigation and state: `goTo(index)`, `clearCurrent()`, `current`,
+  `getStats()`, `isGroupVisible(name)`, `getMatchAt(x, y)`.
+- Callbacks: `onHighlightHover`, `onUpdate`, `onCurrentChange`.
+  `onHighlightClick` now also receives the `MouseEvent`.
+- Group options `ignoreDiacritics` (accent-insensitive matching) and
+  `wholeWord: 'unicode'` (script-aware word boundaries).
+- Options `exclude` (CSS selector of subtrees to skip), `scroll` (behaviour or
+  `false`), and `autoUpdate: { debounce }`.
+- `foldDiacritics` export and a `MatchOptions` argument to `computeMatches`.
+- Demo page (`npm run demo`) that counts DOM mutations to show it stays at 0.
+
+### Changed
+
+- Literal terms are de-duplicated and tried longest-first, so `['cat',
+  'category']` highlights all of "category".
+- `update()` keeps the current match when it still exists, instead of resetting.
+- Navigation scrolls the nearest scrollable container, not only the window.
+- Hiding the group that holds the current match clears the current match.
+- `<textarea>` content is no longer scanned.
+- The highlighter copies `groups`; it no longer reads later changes to the
+  array you passed in. Use the group-management methods instead.
+- Hover/click hit-testing for `css-highlight` narrows candidates with the
+  caret-from-point APIs before measuring rects.
+
+### Fixed
+
+- Group names that are not valid CSS identifiers (spaces, punctuation) now
+  produce valid `::highlight()` rules.
+- `dom-span` no longer reports clicks on highlights of hidden groups.
+
 ## [0.1.0] - 2026-08-15
 
 ### Added
@@ -35,5 +81,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `destroy()` for full cleanup of registry entries, wrapper elements, injected
   styles, and listeners.
 
-[Unreleased]: https://github.com/kevinlukose/term-highlight/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/kevinlukose/term-highlight/releases/tag/v0.1.0
+[Unreleased]: https://github.com/sundown111/term-highlight/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/sundown111/term-highlight/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/sundown111/term-highlight/releases/tag/v0.1.0

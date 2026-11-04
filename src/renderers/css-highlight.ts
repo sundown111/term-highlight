@@ -1,7 +1,8 @@
 import type { HighlightGroup, MatchInfo } from '../types.js';
 import type { TextModel } from '../matcher.js';
 import type { Renderer, RendererContext } from './renderer.js';
-import { styleToCssText } from '../utils.js';
+import { cssEscapeIdent, styleToCssText } from '../utils.js';
+import { attachPointerHandlers, hitTestRanges } from './pointer.js';
 import {
   getHighlightConstructor,
   getHighlightRegistry,
@@ -34,7 +35,7 @@ export class CssHighlightRenderer implements Renderer {
 
   private styleEl: HTMLStyleElement | undefined;
   private readonly currentHighlight: HighlightLike;
-  private readonly clickListener: (event: MouseEvent) => void;
+  private readonly detachPointer: () => void;
 
   constructor(ctx: RendererContext) {
     const Ctor = getHighlightConstructor();
@@ -50,8 +51,17 @@ export class CssHighlightRenderer implements Renderer {
     this.currentHighlight = new Ctor();
     this.currentHighlight.priority = CURRENT_PRIORITY;
 
-    this.clickListener = (event: MouseEvent): void => this.handleClick(event);
-    ctx.root.addEventListener('click', this.clickListener);
+    this.detachPointer = attachPointerHandlers(ctx, (e) => this.matchAtPoint(e.clientX, e.clientY));
+  }
+
+  setGroups(groups: HighlightGroup[]): void {
+    this.clearRegistry();
+    this.ctx.groups = groups;
+    this.groupConfig.clear();
+    for (const g of groups) this.groupConfig.set(g.name, g);
+    for (const name of [...this.visible.keys()]) {
+      if (!this.groupConfig.has(name)) this.visible.delete(name);
+    }
   }
 
   private groupKey(name: string): string {
@@ -132,7 +142,7 @@ export class CssHighlightRenderer implements Renderer {
   }
 
   destroy(): void {
-    this.ctx.root.removeEventListener('click', this.clickListener);
+    this.detachPointer();
     this.clearRegistry();
     this.registry.delete(this.currentKey());
     this.highlights.clear();
@@ -159,41 +169,30 @@ export class CssHighlightRenderer implements Renderer {
     const rules: string[] = [];
     for (const group of this.ctx.groups) {
       const css = styleToCssText(group.style) || 'background-color: yellow;';
-      rules.push(`::highlight(${this.groupKey(group.name)}) { ${css} }`);
+      rules.push(`::highlight(${cssEscapeIdent(this.groupKey(group.name))}) { ${css} }`);
     }
     const currentCss =
       styleToCssText(this.ctx.currentStyle) || 'background-color: #ff9632; color: black;';
     // Declared last so it wins over group rules for the current match.
-    rules.push(`::highlight(${this.currentKey()}) { ${currentCss} }`);
+    rules.push(`::highlight(${cssEscapeIdent(this.currentKey())}) { ${currentCss} }`);
     this.styleEl.textContent = rules.join('\n');
   }
 
   /**
-   * Hit-test a click against every visible match's client rects.
+   * Hit-test a point against every visible match's client rects.
    *
-   * We intentionally do NOT use `CSS.highlights` + `highlightsFromPoint()`:
-   * as of 2025 `highlightsFromPoint()` is only shipping in Chromium and is
-   * absent in Firefox and Safari, so we rely on `Range.getClientRects()`
-   * point-in-rect testing, which works in every browser that supports the
-   * Highlight API. (Re-verify this note before switching to the native API.)
+   * We intentionally do NOT use `CSS.highlights.highlightsFromPoint()`: as of
+   * 2026 it is only shipping in Chromium and is absent in Firefox and Safari,
+   * so we rely on `Range` geometry, which works in every browser that supports
+   * the Highlight API. (Re-verify this note before switching to the native API.)
    */
-  private handleClick(event: MouseEvent): void {
-    if (!this.ctx.onClick) return;
-    const x = event.clientX;
-    const y = event.clientY;
-    // Iterate in reverse so higher-priority / later matches win ties visually.
-    for (let i = this.matches.length - 1; i >= 0; i--) {
-      const match = this.matches[i]!;
-      if (this.visible.get(match.group) === false) continue;
-      if (typeof match.range.getClientRects !== 'function') continue;
-      const rects = match.range.getClientRects();
-      for (let r = 0; r < rects.length; r++) {
-        const rect = rects[r]!;
-        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-          this.ctx.onClick(match);
-          return;
-        }
-      }
-    }
+  matchAtPoint(x: number, y: number): MatchInfo | undefined {
+    return hitTestRanges(
+      this.ctx.root.ownerDocument,
+      this.matches,
+      x,
+      y,
+      (m) => this.visible.get(m.group) !== false
+    );
   }
 }

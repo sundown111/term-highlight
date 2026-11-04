@@ -23,8 +23,28 @@ export type Term = string | string[] | RegExp;
  */
 export type OverlapStrategy = 'first-match' | 'priority' | 'allow-overlap';
 
-/** Rendering strategy. See the README "Rendering strategies" section. */
-export type Strategy = 'auto' | 'css-highlight' | 'dom-span';
+/**
+ * Rendering strategy. See the README "Rendering strategies" section.
+ *
+ * - `css-highlight`: paint with the CSS Custom Highlight API (no DOM mutation).
+ * - `dom-span`: wrap matches in `<mark>` elements.
+ * - `none`: match and navigate, but paint nothing and never touch the DOM.
+ * - `auto`: `css-highlight` when available, otherwise {@link HighlighterOptions.fallback}.
+ */
+export type Strategy = 'auto' | 'css-highlight' | 'dom-span' | 'none';
+
+/** The concrete strategy in use after `auto` resolution. */
+export type ResolvedStrategy = Exclude<Strategy, 'auto'>;
+
+/**
+ * Word-boundary mode.
+ * - `true`: ASCII `\b` boundaries (fast, Latin-only).
+ * - `'unicode'`: a match must not be preceded or followed by a Unicode letter,
+ *   number, combining mark, or `_`. Works for accented Latin, Cyrillic, Greek,
+ *   Arabic, etc. Scripts written without spaces (CJK, Thai) still need explicit
+ *   `RegExp` terms.
+ */
+export type WholeWord = boolean | 'unicode';
 
 /** A single configured group of terms with independent styling. */
 export interface HighlightGroup {
@@ -32,8 +52,14 @@ export interface HighlightGroup {
   name: string;
   /** One or more terms to match for this group. */
   terms: Term[];
-  /** Require matches to fall on word boundaries (`\b`). ASCII-only; see README. */
-  wholeWord?: boolean;
+  /** Require matches to fall on word boundaries. See {@link WholeWord}. */
+  wholeWord?: WholeWord;
+  /**
+   * Match regardless of accents: `cafe` finds `café`, `resume` finds `résumé`.
+   * Applies to literal string terms; `RegExp` terms run against the
+   * accent-stripped text, so write them without accents. Defaults to `false`.
+   */
+  ignoreDiacritics?: boolean;
   /** Match case-sensitively. Defaults to `false` (case-insensitive). */
   caseSensitive?: boolean;
   /** Extra class name applied to wrapper elements (dom-span strategy only). */
@@ -57,12 +83,42 @@ export interface HighlighterOptions {
   groups: HighlightGroup[];
   /** Rendering strategy. Defaults to `'auto'`. */
   strategy?: Strategy;
-  /** Re-run matching automatically when the root subtree mutates. Defaults to `false`. */
-  autoUpdate?: boolean;
+  /**
+   * Used by `strategy: 'auto'` when the CSS Custom Highlight API is missing.
+   * `'dom-span'` (default) wraps matches in `<mark>`; `'none'` guarantees the
+   * DOM is never modified, at the cost of painting nothing on old browsers.
+   */
+  fallback?: 'dom-span' | 'none';
+  /**
+   * Re-run matching automatically when the root subtree mutates. Pass
+   * `{ debounce: ms }` to wait for mutations to settle (useful for streaming or
+   * typing-heavy content). Defaults to `false`.
+   */
+  autoUpdate?: boolean | { debounce?: number };
+  /**
+   * CSS selector for subtrees to skip, e.g. `'code, pre, [data-no-highlight]'`.
+   * `<script>`, `<style>`, `<noscript>`, and `<textarea>` are always skipped.
+   */
+  exclude?: string;
+  /**
+   * How `next()` / `previous()` / `goTo()` scroll the current match into view.
+   * Scrolls the nearest scrollable ancestor of the root, or the window.
+   * `false` disables scrolling. Defaults to `'smooth'`.
+   */
+  scroll?: false | 'smooth' | 'auto' | 'instant';
   /** How to resolve overlapping matches. Defaults to `'priority'`. */
   overlapStrategy?: OverlapStrategy;
   /** Called when a rendered highlight is clicked. */
-  onHighlightClick?: (match: MatchInfo) => void;
+  onHighlightClick?: (match: MatchInfo, event: MouseEvent) => void;
+  /**
+   * Called when the pointer enters a highlight (with the match) and when it
+   * leaves all highlights (with `undefined`). Handy for tooltips/definitions.
+   */
+  onHighlightHover?: (match: MatchInfo | undefined, event: MouseEvent) => void;
+  /** Called after every matching pass (initial, `update()`, auto-update, group changes). */
+  onUpdate?: (matches: MatchInfo[], stats: HighlightStats) => void;
+  /** Called whenever the "current" match changes, e.g. to render "3 of 12". */
+  onCurrentChange?: (match: MatchInfo | undefined, stats: HighlightStats) => void;
   /**
    * Styles for the "current" match set by {@link Highlighter.next} /
    * {@link Highlighter.previous}. Defaults to an orange background.
@@ -89,6 +145,21 @@ export interface MatchInfo {
   range: Range;
 }
 
+/** Counts for building a "3 of 12" style indicator or a per-group legend. */
+export interface HighlightStats {
+  /** Total resolved matches, including hidden groups. */
+  total: number;
+  /** Matches in currently visible groups (what `next()` iterates over). */
+  visible: number;
+  /** 1-based position of the current match among visible matches, or `0` if none. */
+  position: number;
+  /** Match count per group name (every configured group appears, even with 0). */
+  byGroup: Record<string, number>;
+}
+
+/** Fields of a group that can be changed after creation with `updateGroup`. */
+export type HighlightGroupPatch = Partial<Omit<HighlightGroup, 'name'>>;
+
 /** The highlighter instance returned by {@link createHighlighter}. */
 export interface Highlighter {
   /** Re-run the matching pass and re-render. Call after the root content changes. */
@@ -111,8 +182,32 @@ export interface Highlighter {
   next(): MatchInfo | undefined;
   /** Move the "current match" indicator to the previous match and scroll it into view. */
   previous(): MatchInfo | undefined;
+  /** Jump to the match with this document-order `index` (see {@link MatchInfo.index}). */
+  goTo(index: number): MatchInfo | undefined;
+  /** Clear the "current match" indicator without changing anything else. */
+  clearCurrent(): void;
+  /** The current match, if any. */
+  readonly current: MatchInfo | undefined;
   /** Get resolved matches, optionally filtered to a single group, in document order. */
   getMatches(groupName?: string): MatchInfo[];
+  /** Match counts and the current position. */
+  getStats(): HighlightStats;
+  /** The visible match under a viewport point (e.g. from a `contextmenu` event). */
+  getMatchAt(clientX: number, clientY: number): MatchInfo | undefined;
+  /** Whether a group is currently visible. */
+  isGroupVisible(name: string): boolean;
+  /** A copy of the current group configuration. */
+  getGroups(): HighlightGroup[];
+  /** Replace a group's terms and re-match. Creates the group if it does not exist. */
+  setTerms(name: string, terms: Term[]): void;
+  /** Add a group (or replace one with the same name) and re-match. */
+  addGroup(group: HighlightGroup): void;
+  /** Remove a group and re-match. Returns `false` if no such group existed. */
+  removeGroup(name: string): boolean;
+  /** Change a group's options (terms, style, priority, …) and re-match. */
+  updateGroup(name: string, patch: HighlightGroupPatch): void;
+  /** Remove all groups and their highlights; the instance stays usable for `addGroup` / `setTerms`. */
+  clear(): void;
   /** The strategy actually in use (after `auto` resolution). */
-  readonly activeStrategy: Exclude<Strategy, 'auto'>;
+  readonly activeStrategy: ResolvedStrategy;
 }
