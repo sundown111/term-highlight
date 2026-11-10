@@ -48,7 +48,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   non-finite `priority`, invalid `wholeWord`, and patterns that cannot be
   compiled.
 - Source maps (`dist/*.map`), `README`/`LICENSE`/`CHANGELOG` in the package, npm
-  provenance configuration.
+  a release workflow that publishes with npm provenance.
 - Test infrastructure: 184 Vitest tests with enforced coverage thresholds,
   Playwright suites for Chromium, Firefox and WebKit (rendering, priorities,
   click/hover, navigation, dynamic updates, cleanup, unsupported-API mocks, heap

@@ -81,15 +81,15 @@ measured there. Timer resolution is about 1 ms in those two.
 
 ### P2 DX, docs, release
 
-| Requirement                        | Status                       | Notes                                                                                                                                     |
-| ---------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Strict TypeScript, public types    | Done                         | Consumer compile test (ESM + CJS resolution) in `pack:check`; new options documented in `types.ts`                                        |
-| Docs                               | Done                         | README, `docs/guide.md`, `docs/frameworks.md`, `docs/security.md`                                                                         |
-| React / Angular / vanilla examples | Partial                      | Written and reviewed but **not compiled or run** (no React/Angular dependency here). Vanilla example not exercised by a test either       |
-| CI                                 | Done                         | Run on GitHub for PR #5 and green: Node 18/20/22 unit jobs, Chromium/Firefox/WebKit job on Ubuntu, packed-tarball check, production audit |
-| Packed artifact validation         | Done                         | `scripts/pack-check.mjs`                                                                                                                  |
-| Semver, changelog, SECURITY.md     | Done                         | `CHANGELOG.md` [Unreleased]; version not bumped (release decision is yours)                                                               |
-| npm provenance                     | Configured, **not verified** | `publishConfig.provenance` and `release.yml` (manual, `npm` environment); only a real publish from Actions proves it                      |
+| Requirement                        | Status                       | Notes                                                                                                                                                                |
+| ---------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Strict TypeScript, public types    | Done                         | Consumer compile test (ESM + CJS resolution) in `pack:check`; new options documented in `types.ts`                                                                   |
+| Docs                               | Done                         | README, `docs/guide.md`, `docs/frameworks.md`, `docs/security.md`                                                                                                    |
+| React / Angular / vanilla examples | Partial                      | Written and reviewed but **not compiled or run** (no React/Angular dependency here). Vanilla example not exercised by a test either                                  |
+| CI                                 | Done                         | Run on GitHub for PR #5 and green: Node 18/20/22 unit jobs, Chromium/Firefox/WebKit job on Ubuntu, packed-tarball check, production audit                            |
+| Packed artifact validation         | Done                         | `scripts/pack-check.mjs`                                                                                                                                             |
+| Semver, changelog, SECURITY.md     | Done                         | `CHANGELOG.md` [Unreleased]; version not bumped (release decision is yours)                                                                                          |
+| npm provenance                     | Configured, **not verified** | `release.yml` passes `--provenance` (manual run, `npm` environment); a local `npm publish` cannot produce provenance, and only a real publish from Actions proves it |
 
 ## Known risks and limitations
 
