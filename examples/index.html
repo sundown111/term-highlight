@@ -6,18 +6,18 @@
     <title>term-highlight: highlight words without span or mark tags</title>
     <meta
       name="description"
-      content="Highlight words, keywords, and search terms in a web page without adding span, mark, or any other tag. A zero-dependency TypeScript library built on the CSS Custom Highlight API, with a live demo."
+      content="Highlight words, keywords, regex matches, and search terms in a web page without adding span, mark, or any other tag. Interactive playground for a zero-dependency TypeScript library built on the CSS Custom Highlight API."
     />
     <meta
       name="keywords"
-      content="word highlight, keyword highlight, text highlight, search highlight, highlight without span, mark.js alternative, CSS Custom Highlight API, find in page, JavaScript, TypeScript"
+      content="word highlight, keyword highlight, text highlight, search highlight, regex highlight, highlight without span, mark.js alternative, CSS Custom Highlight API, find in page, JavaScript, TypeScript"
     />
     <link rel="canonical" href="https://sundown111.github.io/term-highlight/" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="term-highlight: highlight words without span or mark tags" />
     <meta
       property="og:description"
-      content="Highlight words and search terms using the CSS Custom Highlight API. The page's HTML never changes. Try the live demo."
+      content="Highlight words, keywords, and regex matches using the CSS Custom Highlight API. The page's HTML never changes. Try the interactive playground."
     />
     <meta property="og:url" content="https://sundown111.github.io/term-highlight/" />
     <meta name="twitter:card" content="summary" />
@@ -34,55 +34,94 @@
     </script>
     <style>
       :root {
-        --bg: #fbfaf7;
+        --bg: #f7f6f2;
         --fg: #1d1c1a;
-        --muted: #6b675f;
-        --line: #e4e0d8;
+        --muted: #625e56;
+        --line: #dedad1;
         --panel: #ffffff;
+        --panel-2: #f0eee8;
         --accent: #1f5f8b;
         --ok: #2f6b3a;
+        --danger: #a3272d;
+        --radius: 8px;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #151513;
+          --bg: #141412;
           --fg: #ecebe6;
-          --muted: #a29e95;
-          --line: #2f2e2a;
-          --panel: #1d1c1a;
+          --muted: #a7a399;
+          --line: #302f2b;
+          --panel: #1c1b19;
+          --panel-2: #23221f;
           --accent: #7cb7e0;
           --ok: #8fd19a;
+          --danger: #ff8a8f;
         }
       }
       * {
         box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
       }
       body {
         margin: 0;
         background: var(--bg);
         color: var(--fg);
         font:
-          16px/1.6 ui-sans-serif,
+          15px/1.55 ui-sans-serif,
           system-ui,
           -apple-system,
           'Segoe UI',
           sans-serif;
       }
-      header,
-      main {
-        max-width: 760px;
+      a {
+        color: var(--accent);
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      code,
+      pre,
+      kbd {
+        font-family: var(--mono);
+        font-size: 0.88em;
+      }
+      kbd {
+        padding: 1px 5px;
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: var(--panel);
+      }
+
+      /* ---------- layout ---------- */
+      .wrap {
+        max-width: 1240px;
         margin: 0 auto;
         padding: 0 16px;
       }
-      header {
-        padding-top: 40px;
+      header.top {
+        padding: 28px 0 8px;
       }
-      h1 {
-        font-size: 1.6rem;
-        margin: 0 0 4px;
-      }
-      header p {
+      header.top h1 {
         margin: 0;
+        font-size: 1.5rem;
+        letter-spacing: -0.01em;
+      }
+      header.top p {
+        margin: 4px 0 0;
         color: var(--muted);
+        max-width: 70ch;
       }
       .links {
         display: flex;
@@ -92,271 +131,822 @@
         margin-top: 12px;
         font-size: 0.92rem;
       }
-      .links a {
-        color: var(--accent);
-      }
       .links code {
-        padding: 2px 6px;
-        border: 1px solid var(--line);
-        border-radius: 4px;
-        background: var(--panel);
-      }
-      .toolbar {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        background: var(--bg);
-        border-bottom: 1px solid var(--line);
-        padding: 12px 0;
-        margin-top: 24px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px 12px;
-        align-items: center;
-      }
-      input[type='search'] {
-        flex: 1 1 220px;
-        min-width: 0;
-        font: inherit;
-        padding: 8px 10px;
+        padding: 3px 8px;
         border: 1px solid var(--line);
         border-radius: 6px;
         background: var(--panel);
-        color: var(--fg);
-      }
-      input[type='search']:focus-visible,
-      button:focus-visible,
-      input[type='checkbox']:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
-      button {
-        font: inherit;
-        min-height: 36px;
-        padding: 6px 12px;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        background: var(--panel);
-        color: var(--fg);
-        cursor: pointer;
-      }
-      .count {
-        color: var(--muted);
-        font-variant-numeric: tabular-nums;
-        min-width: 7ch;
-      }
-      .groups {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px 16px;
-        width: 100%;
-        font-size: 0.9rem;
-      }
-      .groups label {
-        display: inline-flex;
-        gap: 6px;
-        align-items: center;
-        cursor: pointer;
-      }
-      .swatch {
-        width: 12px;
-        height: 12px;
-        border-radius: 3px;
-        display: inline-block;
       }
       .proof {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 20px;
         margin: 16px 0;
-        padding: 12px 14px;
+        padding: 10px 14px;
         border: 1px solid var(--line);
-        border-radius: 8px;
+        border-radius: var(--radius);
         background: var(--panel);
-        font-size: 0.92rem;
+        font-size: 0.9rem;
       }
       .proof strong {
         color: var(--ok);
         font-variant-numeric: tabular-nums;
       }
-      .hint {
-        min-height: 1.6em;
+      .proof .bad {
+        color: var(--danger);
+      }
+      .layout {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: 'text' 'controls';
+        padding-bottom: 48px;
+      }
+      @media (min-width: 960px) {
+        .layout {
+          grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+          grid-template-areas: 'controls text';
+          align-items: start;
+        }
+        .controls {
+          position: sticky;
+          top: 12px;
+          max-height: calc(100vh - 24px);
+          overflow: auto;
+        }
+      }
+      .controls {
+        grid-area: controls;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
+        gap: 12px;
+        align-content: start;
+      }
+      .textcol {
+        grid-area: text;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        min-width: 0;
+      }
+      .panel {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        padding: 12px;
+      }
+      .panel h2 {
+        margin: 0 0 10px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
         color: var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      /* ---------- form controls ---------- */
+      .btn {
+        min-height: 34px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .btn:hover {
+        background: var(--panel-2);
+      }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--bg);
+      }
+      .btn.icon {
+        width: 34px;
+        padding: 0;
+      }
+      .btn.ghost {
+        border-color: transparent;
+        background: transparent;
+      }
+      .btn[aria-pressed='true'] {
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+      .field {
+        display: grid;
+        gap: 4px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      input[type='text'],
+      input[type='search'],
+      input[type='number'],
+      select,
+      textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 54px;
+        font-family: var(--mono);
+        font-size: 0.85rem;
+      }
+      textarea.invalid {
+        border-color: var(--danger);
+      }
+      .error {
+        color: var(--danger);
+        font-size: 0.8rem;
+      }
+      .error:empty {
+        display: none;
+      }
+      .check {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .row select {
+        width: auto;
+        flex: 1 1 140px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .seg button {
+        border: 0;
+        padding: 4px 12px;
+        min-height: 32px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+      .seg button[aria-pressed='true'] {
+        background: var(--accent);
+        color: var(--bg);
+      }
+
+      /* ---------- group cards ---------- */
+      .groups {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+      }
+      .group {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--swatch, var(--line));
+        border-radius: var(--radius);
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+        background: var(--bg);
+      }
+      .group.hidden-group {
+        opacity: 0.6;
+      }
+      .group-head {
+        display: grid;
+        grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+        gap: 6px;
+        align-items: center;
+      }
+      .group-head > input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+      }
+      .group-head input[type='text'] {
+        font-weight: 600;
+      }
+      .color {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: none;
+        cursor: pointer;
+      }
+      .color::-webkit-color-swatch-wrapper {
+        padding: 2px;
+      }
+      .color::-webkit-color-swatch {
+        border: 0;
+        border-radius: 4px;
+      }
+      .badge {
+        min-width: 2.2em;
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: var(--panel-2);
+        font-size: 0.8rem;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .swatches button {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        cursor: pointer;
+        padding: 0;
+      }
+      details.more summary {
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      details.more[open] summary {
+        margin-bottom: 8px;
+      }
+      .opts {
+        display: grid;
+        gap: 8px;
+      }
+
+      /* ---------- text area ---------- */
+      .searchbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .searchbar input[type='search'] {
+        flex: 1 1 220px;
+        width: auto;
+      }
+      .count {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        min-width: 8ch;
         font-size: 0.9rem;
       }
-      article {
-        padding-bottom: 60vh;
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        font-size: 0.85rem;
+        color: var(--muted);
       }
-      article h2 {
-        font-size: 1.15rem;
-        margin-top: 28px;
+      #article {
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        min-height: 260px;
+        line-height: 1.7;
+        overflow-wrap: anywhere;
       }
-      code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.9em;
+      #article:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      #article h3 {
+        margin: 0 0 6px;
+        font-size: 1.05rem;
+      }
+      #article p {
+        margin: 0 0 12px;
+      }
+      #article pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font-size: 0.9rem;
+      }
+      .edit-hint {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin: -4px 0 0;
+      }
+      .matches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-height: 180px;
+        overflow: auto;
+      }
+      .matches button {
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--swatch, var(--line));
+        border-radius: 6px;
+        background: var(--bg);
+        padding: 2px 8px;
+        min-height: 28px;
+        font-size: 0.82rem;
+        cursor: pointer;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .matches button[aria-current='true'] {
+        outline: 2px solid var(--accent);
+      }
+      .empty {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      pre.code {
+        margin: 0;
+        padding: 10px;
+        border-radius: 6px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        overflow: auto;
+        max-height: 320px;
+        font-size: 0.78rem;
+        line-height: 1.5;
+      }
+      #tip {
+        position: fixed;
+        z-index: 10;
+        pointer-events: none;
+        max-width: 260px;
+        padding: 6px 9px;
+        border-radius: 6px;
+        background: var(--fg);
+        color: var(--bg);
+        font-size: 0.8rem;
+        line-height: 1.4;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      }
+      #tip[hidden] {
+        display: none;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
       }
     </style>
   </head>
   <body>
-    <header>
-      <h1>term-highlight</h1>
-      <p>
-        Highlight words, keywords, and search terms without adding span, mark, or any other tag.
-        Highlights in the article below are painted by the browser; the HTML never changes.
-      </p>
-      <div class="links">
-        <code>npm install term-highlight</code>
-        <a href="https://github.com/sundown111/term-highlight">GitHub</a>
-        <a href="https://www.npmjs.com/package/term-highlight">npm</a>
-        <a href="https://github.com/sundown111/term-highlight/blob/main/docs/why-no-wrapper-tags.md"
-          >Why no span or mark tags?</a
-        >
-      </div>
-    </header>
+    <div class="wrap">
+      <header class="top">
+        <h1>term-highlight playground</h1>
+        <p>
+          Highlight words, keywords, and regex matches without adding span, mark, or any other tag.
+          Create groups, pick colours, and edit the text: the browser paints every highlight and the
+          HTML never changes.
+        </p>
+        <div class="links">
+          <code>npm install term-highlight</code>
+          <a href="https://github.com/sundown111/term-highlight">GitHub</a>
+          <a href="https://www.npmjs.com/package/term-highlight">npm</a>
+          <a
+            href="https://github.com/sundown111/term-highlight/blob/main/docs/why-no-wrapper-tags.md"
+            >Why no span or mark tags?</a
+          >
+        </div>
+      </header>
 
-    <main>
-      <div class="toolbar" role="search">
-        <input
-          id="q"
-          type="search"
-          placeholder='Search, e.g. range "custom highlight"'
-          aria-label="Search the article"
-        />
-        <button id="prev" type="button" aria-label="Previous match">↑</button>
-        <button id="next" type="button" aria-label="Next match">↓</button>
-        <span id="count" class="count" aria-live="polite"></span>
-        <div class="groups" id="groups"></div>
+      <div class="proof" aria-live="polite">
+        <span>Strategy: <strong id="strategy">…</strong></span>
+        <span>Tags added by term-highlight: <strong id="tags">0</strong></span>
+        <span>DOM changes made by term-highlight: <strong id="mutations">0</strong></span>
+        <span>Matches: <strong id="total">0</strong></span>
       </div>
 
-      <div class="proof" id="proof">
-        Strategy: <strong id="strategy">…</strong> · elements inside the article:
-        <strong id="elements">…</strong> · DOM mutations since load:
-        <strong id="mutations">0</strong>
-      </div>
-      <p class="hint" id="hint">Hover or click a highlighted term.</p>
+      <div class="layout">
+        <aside class="controls" aria-label="Highlight settings">
+          <section class="panel">
+            <h2>
+              Groups
+              <button class="btn primary" id="add-group" type="button">+ Add group</button>
+            </h2>
+            <div class="groups" id="groups"></div>
+          </section>
 
-      <article id="article">
-        <h2>The problem</h2>
-        <p>
-          Most highlight libraries wrap every match in a <code>&lt;mark&gt;</code> or
-          <code>&lt;span&gt;</code>. That splits text nodes, breaks event listeners, confuses React
-          and other frameworks during reconciliation, corrupts
-          <code>contenteditable</code> selections, and can shift layout. Undoing it means walking
-          the DOM again and hoping nothing else changed.
-        </p>
-        <h2>The solution</h2>
-        <p>
-          The CSS Custom Highlight API lets a page register a set of Range objects under a name and
-          style them with <code>::highlight(name)</code>. The browser paints the colour directly on
-          the text. Nothing is inserted, so the document tree stays exactly as you wrote it. This
-          library finds matches, builds the ranges, and keeps them in sync for you.
-        </p>
-        <h2>What you get</h2>
-        <p>
-          Groups with their own colour and priority, matches that cross element boundaries like
-          <em>custom</em> <strong>highlight</strong>, accent-insensitive search so
-          <em>cafe</em> finds café and résumé, find-in-page navigation with a live count, hover and
-          click callbacks for tooltips, and a strict mode that never touches the DOM even on old
-          browsers. Released in 2026, version 0.2.0 supports Chrome 105, Safari 17.2, and Firefox
-          140 or newer.
-        </p>
-        <h2>Glossary</h2>
-        <p>
-          A Range is a start and end point in the document. A Highlight is a set of ranges painted
-          together. The registry is the map at CSS.highlights where each highlight is stored by
-          name.
-        </p>
-      </article>
-    </main>
+          <section class="panel">
+            <h2>Settings</h2>
+            <div class="opts">
+              <label class="field"
+                >When matches overlap
+                <select id="overlap">
+                  <option value="priority">Higher priority wins</option>
+                  <option value="first-match">First match wins</option>
+                  <option value="allow-overlap">Show all (layered)</option>
+                </select>
+              </label>
+              <div class="field">
+                Current match colour
+                <div class="row">
+                  <input
+                    class="color"
+                    type="color"
+                    id="current-color"
+                    value="#ff9632"
+                    aria-label="Current match colour"
+                  />
+                  <span class="empty">Used by search, ↑ ↓, and clicking a match.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>
+              Code
+              <button class="btn" id="copy" type="button">Copy</button>
+            </h2>
+            <pre class="code" id="code" tabindex="0" aria-label="Generated code"></pre>
+          </section>
+        </aside>
+
+        <main class="textcol">
+          <section class="panel">
+            <div class="searchbar" role="search">
+              <label class="sr-only" for="q">Search the text</label>
+              <input
+                id="q"
+                type="search"
+                placeholder='Search… e.g. range "custom highlight"'
+                autocomplete="off"
+              />
+              <button class="btn icon" id="prev" type="button" aria-label="Previous match">
+                ↑
+              </button>
+              <button class="btn icon" id="next" type="button" aria-label="Next match">↓</button>
+              <span class="count" id="count" aria-live="polite"></span>
+            </div>
+            <div class="row" style="margin-top: 8px">
+              <label class="check"
+                ><input type="checkbox" id="q-accents" checked /> Ignore accents</label
+              >
+              <label class="check"><input type="checkbox" id="q-case" /> Match case</label>
+              <label class="check"
+                ><input type="checkbox" id="q-regex" /> Allow <code>/regex/</code></label
+              >
+              <span class="empty"
+                ><kbd>Enter</kbd> next · <kbd>Shift</kbd>+<kbd>Enter</kbd> previous ·
+                <kbd>Esc</kbd> clear · <kbd>/</kbd> focus</span
+              >
+            </div>
+          </section>
+
+          <div class="presets">
+            Examples:
+            <button class="btn" type="button" data-preset="article">Article</button>
+            <button class="btn" type="button" data-preset="code">Code review</button>
+            <button class="btn" type="button" data-preset="languages">Many languages</button>
+            <button class="btn" type="button" data-preset="logs">Server logs</button>
+          </div>
+
+          <article
+            id="article"
+            contenteditable="true"
+            spellcheck="false"
+            aria-label="Text to highlight (editable)"
+          ></article>
+          <p class="edit-hint">
+            This text is editable: type or paste your own. Hover a highlight to see its group; click
+            it to make it current.
+          </p>
+
+          <section class="panel">
+            <h2>Matches <span class="badge" id="match-count">0</span></h2>
+            <div class="matches" id="matches"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div id="tip" role="tooltip" hidden></div>
 
     <script type="module">
-      import { createHighlighter, connectSearchInput } from '../dist/index.js';
+      import { createHighlighter, connectSearchInput, parseQuery } from '../dist/index.js';
 
-      const article = document.getElementById('article');
-      const definitions = {
-        range: 'A start and end point in the document.',
-        highlight: 'A set of ranges painted together.',
-        registry: 'CSS.highlights: where highlights are stored by name.',
+      // ------------------------------------------------------------ data
+      const PALETTE = [
+        '#ffe066',
+        '#9ad1ff',
+        '#a8e6a1',
+        '#ffb3c7',
+        '#d7b8ff',
+        '#ffc58f',
+        '#7fdbca',
+        '#ff8787',
+      ];
+      const STYLES = {
+        background: 'Background',
+        underline: 'Underline',
+        wavy: 'Wavy underline',
+        text: 'Text colour',
       };
 
-      const groups = [
-        {
-          name: 'glossary',
-          terms: Object.keys(definitions),
-          wholeWord: 'unicode',
-          style: { textDecoration: 'underline dotted 2px', textUnderlineOffset: '3px' },
-          label: 'Glossary terms',
-          swatch: 'transparent',
+      const PRESETS = {
+        article: {
+          html: `<h3>Highlighting text without wrapper tags</h3>
+<p>Most highlight libraries wrap every match in a mark or span tag. That splits text nodes, breaks React re-renders, and corrupts contenteditable editors like this one. The CSS Custom Highlight API fixes it: you register a Range, give it a name, and style it with ::highlight(name).</p>
+<p>Ada Lovelace wrote the first program in 1843. Grace Hopper built the first compiler in 1952, and Margaret Hamilton led the Apollo software team in 1969. Questions? Write to hello@example.com or support@term-highlight.dev.</p>
+<p>A café in Zürich charges 4.50 for a coffee; a résumé costs nothing. Version 1.0.0 supports Chrome 105, Safari 17.2, and Firefox 140.</p>`,
+          groups: [
+            {
+              name: 'Keywords',
+              color: '#ffe066',
+              style: 'background',
+              mode: 'words',
+              terms: 'highlight "custom highlight" range tag',
+              priority: 1,
+            },
+            {
+              name: 'Numbers',
+              color: '#9ad1ff',
+              style: 'background',
+              mode: 'regex',
+              terms: '\\d+(?:[.,]\\d+)*',
+            },
+            {
+              name: 'Emails',
+              color: '#2f9e44',
+              style: 'underline',
+              mode: 'regex',
+              terms: '[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+',
+              priority: 2,
+            },
+            {
+              name: 'People',
+              color: '#9c36b5',
+              style: 'wavy',
+              mode: 'words',
+              terms: '"Ada Lovelace" "Grace Hopper" "Margaret Hamilton"',
+              wholeWord: 'unicode',
+            },
+          ],
         },
-        {
-          name: 'numbers',
-          terms: [/\d+(?:\.\d+)*/],
-          style: { backgroundColor: '#cfe6ff', color: '#0b2a44' },
-          label: 'Numbers',
-          swatch: '#cfe6ff',
-        },
-      ];
+        code: {
+          html: `<pre>// TODO: handle empty input
+function parseUser(raw) {
+  const user = JSON.parse(raw); // FIXME: throws on bad JSON
+  return formatName(user.first, user.last);
+}
 
-      const hint = document.getElementById('hint');
-      const h = createHighlighter({
-        root: article,
-        groups: groups.map(({ label, swatch, ...g }) => g),
-        currentStyle: { backgroundColor: '#ff9632', color: '#000' },
-        onHighlightHover: (m) => {
-          hint.textContent = m
-            ? m.group === 'glossary'
-              ? `${m.text}: ${definitions[m.text.toLowerCase()]}`
-              : `“${m.text}” (${m.group})`
-            : 'Hover or click a highlighted term.';
-        },
-        onHighlightClick: (m) => h.goTo(m.index),
-      });
+function formatName(first, last) {
+  // HACK: trim until the API is fixed
+  return first.trim() + " " + last.trim();
+}
 
-      // Search box: type to highlight, Enter / Shift+Enter to step, Escape to clear.
-      const count = document.getElementById('count');
-      // Shareable searches: ?q=range prefills the box.
-      const initial = new URLSearchParams(location.search).get('q');
-      if (initial) document.getElementById('q').value = initial;
-      const search = connectSearchInput(document.getElementById('q'), h, {
-        ignoreDiacritics: true,
-        style: { backgroundColor: '#fff3a0', color: '#1d1c1a' },
-        onChange: (s) => {
-          count.textContent = document.getElementById('q').value
-            ? s.total
-              ? `${s.position || '–'} of ${s.total}`
-              : 'No results'
-            : '';
+const greeting = "Hello, world";
+console.log(parseUser('{"first":"Ada","last":"Lovelace"}'));</pre>`,
+          groups: [
+            {
+              name: 'Notes',
+              color: '#ff8787',
+              style: 'background',
+              mode: 'words',
+              terms: 'TODO FIXME HACK',
+              caseSensitive: true,
+              wholeWord: 'ascii',
+              priority: 3,
+            },
+            {
+              name: 'Function calls',
+              color: '#1c7ed6',
+              style: 'text',
+              mode: 'regex',
+              terms: '[A-Za-z_]\\w*(?=\\()',
+            },
+            {
+              name: 'Strings',
+              color: '#2f9e44',
+              style: 'underline',
+              mode: 'regex',
+              terms: '"[^"\\n]*"\n\'[^\'\\n]*\'',
+            },
+            {
+              name: 'Keywords',
+              color: '#d7b8ff',
+              style: 'background',
+              mode: 'words',
+              terms: 'function const return',
+              caseSensitive: true,
+              wholeWord: 'ascii',
+            },
+          ],
         },
-      });
-      document.getElementById('next').onclick = () => search.next();
-      document.getElementById('prev').onclick = () => search.previous();
+        languages: {
+          html: `<h3>Accents and other alphabets</h3>
+<p>French: un café crème et un résumé naïf. Polish: Łódź is a city; Lodz is the same name without accents. German: Straße, Müller.</p>
+<p>Russian: кот спит, котик играет, коты едят. Greek: η γάτα και οι γάτες. Spanish: el niño y la niña, una canción.</p>
+<p>The first group has "Ignore accents" on, so <em>cafe</em> finds café and <em>lodz</em> finds Łódź. The second uses "Whole word: Unicode", so кот does not match inside котик.</p>`,
+          groups: [
+            {
+              name: 'Accent-free search',
+              color: '#ffe066',
+              style: 'background',
+              mode: 'words',
+              terms: 'cafe resume naif lodz muller nino nina cancion',
+              ignoreDiacritics: true,
+            },
+            {
+              name: 'Russian "кот" (whole word)',
+              color: '#9ad1ff',
+              style: 'background',
+              mode: 'words',
+              terms: 'кот',
+              wholeWord: 'unicode',
+            },
+            {
+              name: 'Greek words',
+              color: '#9c36b5',
+              style: 'wavy',
+              mode: 'regex',
+              terms: '[\\u0370-\\u03ff]+',
+            },
+          ],
+        },
+        logs: {
+          html: `<pre>2026-11-10 09:14:02 INFO  api    GET /users/42 200 18ms
+2026-11-10 09:14:03 WARN  api    GET /search?q=highlight 200 912ms (slow)
+2026-11-10 09:14:05 ERROR db     connection to 10.0.4.17:5432 refused
+2026-11-10 09:14:05 INFO  api    POST /login 401 7ms user=ada@example.com
+2026-11-10 09:14:09 ERROR worker job 7f3a9c failed: timeout after 30000ms
+2026-11-10 09:14:12 INFO  api    GET /health 200 2ms</pre>`,
+          groups: [
+            {
+              name: 'Errors',
+              color: '#ff8787',
+              style: 'background',
+              mode: 'words',
+              terms: 'ERROR failed refused',
+              priority: 3,
+            },
+            {
+              name: 'Warnings',
+              color: '#ffc58f',
+              style: 'background',
+              mode: 'words',
+              terms: 'WARN slow',
+              priority: 2,
+            },
+            {
+              name: 'Status codes',
+              color: '#1c7ed6',
+              style: 'underline',
+              mode: 'regex',
+              terms: '(?<=\\s)[1-5]\\d\\d(?=\\s)',
+              priority: 1,
+            },
+            {
+              name: 'IP addresses',
+              color: '#9c36b5',
+              style: 'wavy',
+              mode: 'regex',
+              terms: '\\b(?:\\d{1,3}\\.){3}\\d{1,3}(?::\\d+)?\\b',
+              priority: 2,
+            },
+            {
+              name: 'Durations',
+              color: '#7fdbca',
+              style: 'background',
+              mode: 'regex',
+              terms: '\\d+ms',
+            },
+          ],
+        },
+      };
 
-      // Group toggles.
-      const box = document.getElementById('groups');
-      for (const g of [...groups, { name: 'search', label: 'Search results', swatch: '#fff3a0' }]) {
-        const label = document.createElement('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = true;
-        cb.onchange = () => h.toggleGroup(g.name, cb.checked);
-        const sw = document.createElement('span');
-        sw.className = 'swatch';
-        sw.style.background = g.swatch;
-        sw.style.border = '1px solid var(--line)';
-        label.append(cb, sw, g.label);
-        box.append(label);
+      // ------------------------------------------------------------ helpers
+      const $ = (sel) => document.querySelector(sel);
+      const article = $('#article');
+      let nextId = 1;
+      let groups = []; // UI state, one entry per group card
+      let h; // the highlighter
+      let search; // the search-box connection
+
+      function textColorFor(hex) {
+        const n = parseInt(hex.slice(1), 16);
+        const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#111111' : '#ffffff';
       }
 
-      // Proof that nothing is inserted into the article.
-      document.getElementById('strategy').textContent =
-        h.activeStrategy === 'css-highlight'
-          ? 'CSS Custom Highlight API'
-          : 'none (this browser lacks the API, so nothing is painted)';
-      const elements = document.getElementById('elements');
-      const showCount = () => (elements.textContent = article.querySelectorAll('*').length);
-      showCount();
-      let mutations = 0;
+      function styleFor(g) {
+        switch (g.style) {
+          case 'underline':
+            return { textDecoration: `underline 2px ${g.color}`, textUnderlineOffset: '3px' };
+          case 'wavy':
+            return { textDecoration: `wavy underline ${g.color}`, textDecorationSkipInk: 'none' };
+          case 'text':
+            return { color: g.color };
+          default:
+            return { backgroundColor: g.color, color: textColorFor(g.color) };
+        }
+      }
+
+      /** Build library terms from a group's text; returns { terms, error }. */
+      function termsFor(g) {
+        if (g.mode === 'words') return { terms: parseQuery(g.terms), error: '' };
+        const terms = [];
+        const errors = [];
+        g.terms
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .forEach((line, i) => {
+            try {
+              terms.push(new RegExp(line));
+            } catch (e) {
+              errors.push(
+                `Line ${i + 1}: ${e.message.replace(/^Invalid regular expression: /, '')}`
+              );
+            }
+          });
+        return { terms, error: errors.join(' · ') };
+      }
+
+      function libGroup(g) {
+        // Every option is set explicitly so turning one off in updateGroup() sticks.
+        return {
+          name: g.key,
+          terms: termsFor(g).terms,
+          style: styleFor(g),
+          priority: Number(g.priority) || 0,
+          caseSensitive: Boolean(g.caseSensitive),
+          wholeWord: g.wholeWord === 'unicode' ? 'unicode' : g.wholeWord === 'ascii',
+          ignoreDiacritics: Boolean(g.ignoreDiacritics),
+        };
+      }
+
+      function makeGroup(partial = {}) {
+        const id = nextId++;
+        return {
+          key: `g${id}`,
+          name: `Group ${groups.length + 1}`,
+          color: PALETTE[groups.length % PALETTE.length],
+          style: 'background',
+          mode: 'words',
+          terms: '',
+          caseSensitive: false,
+          wholeWord: 'off',
+          ignoreDiacritics: false,
+          priority: 0,
+          visible: true,
+          ...partial,
+        };
+      }
+
+      const nameOf = (key) =>
+        key === 'search' ? 'Search' : groups.find((g) => g.key === key)?.name || key;
+      const colorOf = (key) =>
+        key === 'search' ? '#fff3a0' : groups.find((g) => g.key === key)?.color || '#999999';
+
+      // ------------------------------------------------------------ "no tags" proof
+      let libraryMutations = 0;
+      let userChanging = false;
+      const markUserChange = () => {
+        userChanging = true;
+        setTimeout(() => (userChanging = false), 0);
+      };
+      ['beforeinput', 'input', 'paste', 'cut', 'drop'].forEach((t) =>
+        article.addEventListener(t, markUserChange)
+      );
       new MutationObserver((records) => {
-        mutations += records.length;
-        document.getElementById('mutations').textContent = mutations;
-        showCount();
+        if (userChanging) return; // the user's own typing doesn't count
+        libraryMutations += records.length;
+        $('#mutations').textContent = libraryMutations;
+        $('#mutations').classList.toggle('bad', libraryMutations > 0);
       }).observe(article, {
         subtree: true,
         childList: true,
@@ -364,8 +954,475 @@
         attributes: true,
       });
 
-      window.h = h; // play with it in the console
-      window.search = search;
+      function updateProof() {
+        const tags = article.querySelectorAll('mark, [data-th-instance]').length;
+        $('#tags').textContent = tags;
+        $('#tags').classList.toggle('bad', tags > 0);
+      }
+
+      // ------------------------------------------------------------ highlighter
+      const tip = $('#tip');
+      const count = $('#count');
+
+      /** (Re)create the highlighter. Needed for options fixed at creation time. */
+      function build() {
+        const current = h?.current;
+        search?.disconnect();
+        h?.destroy();
+
+        const cur = $('#current-color').value;
+        h = createHighlighter({
+          root: article,
+          groups: groups.map(libGroup),
+          overlapStrategy: $('#overlap').value,
+          autoUpdate: { debounce: 150 },
+          currentStyle: { backgroundColor: cur, color: textColorFor(cur) },
+          onUpdate: renderResults,
+          onCurrentChange: renderResults,
+          onHighlightHover: (m, e) => {
+            if (!m) {
+              tip.hidden = true;
+              return;
+            }
+            const text = m.text.length > 60 ? `${m.text.slice(0, 60)}…` : m.text;
+            tip.textContent = `${nameOf(m.group)}: “${text}”`;
+            tip.hidden = false;
+            const x = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+            tip.style.left = `${Math.max(8, x)}px`;
+            tip.style.top = `${e.clientY + 16}px`;
+          },
+          onHighlightClick: (m) => h.goTo(m.index),
+        });
+        window.h = h; // play with it in the console
+        groups.forEach((g) => h.toggleGroup(g.key, g.visible));
+
+        search = connectSearchInput($('#q'), h, {
+          style: { backgroundColor: '#fff3a0', color: '#111111' },
+          priority: 10,
+          ignoreDiacritics: $('#q-accents').checked,
+          caseSensitive: $('#q-case').checked,
+          allowRegex: $('#q-regex').checked,
+          onChange: updateCount,
+        });
+        if (current) {
+          const same = h
+            .getMatches()
+            .find((m) => m.start === current.start && m.group === current.group);
+          if (same) h.goTo(same.index);
+        }
+
+        $('#strategy').textContent =
+          h.activeStrategy === 'css-highlight'
+            ? 'CSS Custom Highlight API'
+            : 'none (this browser lacks the Highlight API, so nothing is painted)';
+        renderResults();
+        renderCode();
+      }
+
+      /** Push one group's settings to the highlighter without rebuilding. */
+      function syncGroup(g) {
+        const { error } = termsFor(g);
+        const card = document.querySelector(`[data-key="${g.key}"]`);
+        if (card) {
+          card.querySelector('.error').textContent = error;
+          card.querySelector('textarea').classList.toggle('invalid', Boolean(error));
+          card.style.setProperty('--swatch', g.color);
+          card.classList.toggle('hidden-group', !g.visible);
+        }
+        const { name, ...patch } = libGroup(g);
+        h.updateGroup(name, patch);
+        h.toggleGroup(g.key, g.visible);
+        renderResults();
+        renderCode();
+      }
+
+      // ------------------------------------------------------------ results
+      /** "3 of 12" for the search box. Also runs after edits re-match the text. */
+      function updateCount() {
+        if (!h || !$('#q').value) {
+          count.textContent = '';
+          return;
+        }
+        const mine = h.getMatches('search');
+        const current = h.current;
+        const pos =
+          current?.group === 'search' ? mine.findIndex((m) => m.index === current.index) + 1 : 0;
+        count.textContent = mine.length ? `${pos || '–'} of ${mine.length}` : 'No results';
+      }
+
+      function renderResults() {
+        if (!h) return;
+        updateCount();
+        const stats = h.getStats();
+        $('#total').textContent = stats.total;
+        for (const g of groups) {
+          const badge = document.querySelector(`[data-key="${g.key}"] .badge`);
+          if (badge) badge.textContent = stats.byGroup[g.key] ?? 0;
+        }
+        const list = $('#matches');
+        const matches = h.getMatches().filter((m) => h.isGroupVisible(m.group));
+        $('#match-count').textContent = matches.length;
+        list.replaceChildren();
+        if (!matches.length) {
+          list.append(
+            el('span', { class: 'empty' }, 'No matches. Add terms to a group, or search above.')
+          );
+        }
+        const current = h.current;
+        for (const m of matches.slice(0, 300)) {
+          const b = el(
+            'button',
+            {
+              type: 'button',
+              title: `${nameOf(m.group)}: ${m.text}`,
+              onclick: () => h.goTo(m.index),
+            },
+            m.text.length > 40 ? `${m.text.slice(0, 40)}…` : m.text
+          );
+          b.style.setProperty('--swatch', colorOf(m.group));
+          if (current && current.index === m.index) b.setAttribute('aria-current', 'true');
+          list.append(b);
+        }
+        updateProof();
+      }
+
+      // ------------------------------------------------------------ code preview
+      function jsString(s) {
+        return `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
+      }
+      function jsObject(obj) {
+        const body = Object.entries(obj)
+          .map(([k, v]) => `${k}: ${typeof v === 'string' ? jsString(v) : v}`)
+          .join(', ');
+        return `{ ${body} }`;
+      }
+      function renderCode() {
+        const lines = [
+          "import { createHighlighter } from 'term-highlight';",
+          '',
+          'const highlighter = createHighlighter({',
+          "  root: document.querySelector('#article'),",
+        ];
+        const overlap = $('#overlap').value;
+        if (overlap !== 'priority') lines.push(`  overlapStrategy: '${overlap}',`);
+        const cur = $('#current-color').value;
+        if (cur !== '#ff9632') lines.push(`  currentStyle: ${jsObject({ backgroundColor: cur })},`);
+        lines.push('  groups: [');
+        for (const g of groups) {
+          const termList = termsFor(g)
+            .terms.map((t) => (t instanceof RegExp ? String(t) : jsString(t)))
+            .join(', ');
+          lines.push('    {');
+          lines.push(`      name: ${jsString(g.name)},`);
+          lines.push(`      terms: [${termList}],`);
+          if (g.caseSensitive) lines.push('      caseSensitive: true,');
+          if (g.wholeWord === 'ascii') lines.push('      wholeWord: true,');
+          if (g.wholeWord === 'unicode') lines.push("      wholeWord: 'unicode',");
+          if (g.ignoreDiacritics) lines.push('      ignoreDiacritics: true,');
+          if (Number(g.priority)) lines.push(`      priority: ${Number(g.priority)},`);
+          lines.push(`      style: ${jsObject(styleFor(g))},`);
+          lines.push('    },');
+        }
+        lines.push('  ],', '});');
+        const hidden = groups.filter((g) => !g.visible);
+        if (hidden.length) {
+          lines.push('');
+          hidden.forEach((g) => lines.push(`highlighter.toggleGroup(${jsString(g.name)}, false);`));
+        }
+        $('#code').textContent = lines.join('\n');
+      }
+
+      $('#copy').onclick = async () => {
+        try {
+          await navigator.clipboard.writeText($('#code').textContent);
+          $('#copy').textContent = 'Copied';
+        } catch {
+          $('#copy').textContent = 'Copy failed';
+        }
+        setTimeout(() => ($('#copy').textContent = 'Copy'), 1500);
+      };
+
+      // ------------------------------------------------------------ group cards
+      function el(tag, props = {}, ...children) {
+        const node = document.createElement(tag);
+        for (const [k, v] of Object.entries(props)) {
+          if (k === 'class') node.className = v;
+          else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+          else if (k in node && !k.includes('-')) node[k] = v;
+          else node.setAttribute(k, v);
+        }
+        node.append(...children.filter((c) => c != null));
+        return node;
+      }
+
+      function debounce(fn, ms) {
+        let t;
+        return () => {
+          clearTimeout(t);
+          t = setTimeout(fn, ms);
+        };
+      }
+
+      function renderGroups() {
+        const box = $('#groups');
+        box.replaceChildren();
+        if (!groups.length) {
+          box.append(el('p', { class: 'empty' }, 'No groups yet. Add one to start highlighting.'));
+        }
+        for (const g of groups) box.append(groupCard(g));
+      }
+
+      const placeholderFor = (mode) =>
+        mode === 'regex' ? 'One pattern per line, e.g. \\d+' : 'Words or "quoted phrases"';
+
+      function groupCard(g) {
+        const sync = () => syncGroup(g);
+        const syncSoon = debounce(sync, 200);
+        const set = (key, soon) => (e) => {
+          g[key] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+          if (soon) syncSoon();
+          else sync();
+        };
+
+        const color = el('input', {
+          class: 'color',
+          type: 'color',
+          value: g.color,
+          title: 'Pick any colour',
+          'aria-label': 'Group colour',
+          oninput: set('color', true),
+        });
+        const terms = el('textarea', {
+          rows: 2,
+          value: g.terms,
+          'aria-label': 'Terms',
+          placeholder: placeholderFor(g.mode),
+          oninput: set('terms', true),
+        });
+
+        const seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Term type' });
+        for (const [mode, label] of [
+          ['words', 'Words'],
+          ['regex', 'Regex'],
+        ]) {
+          seg.append(
+            el(
+              'button',
+              {
+                type: 'button',
+                'aria-pressed': String(g.mode === mode),
+                onclick: () => {
+                  g.mode = mode;
+                  terms.placeholder = placeholderFor(mode);
+                  seg
+                    .querySelectorAll('button')
+                    .forEach((b) =>
+                      b.setAttribute('aria-pressed', String(b.textContent === label))
+                    );
+                  sync();
+                },
+              },
+              label
+            )
+          );
+        }
+
+        const styleSelect = el(
+          'select',
+          { 'aria-label': 'Highlight style', onchange: set('style') },
+          ...Object.entries(STYLES).map(([v, label]) =>
+            el('option', { value: v, selected: g.style === v }, label)
+          )
+        );
+
+        const swatches = el(
+          'div',
+          { class: 'swatches', role: 'group', 'aria-label': 'Quick colours' },
+          ...PALETTE.map((c) => {
+            const b = el('button', {
+              type: 'button',
+              title: c,
+              'aria-label': `Use colour ${c}`,
+              onclick: () => {
+                g.color = c;
+                color.value = c;
+                sync();
+              },
+            });
+            b.style.background = c;
+            return b;
+          })
+        );
+
+        const wholeWord = el(
+          'select',
+          { onchange: set('wholeWord') },
+          el('option', { value: 'off', selected: g.wholeWord === 'off' }, 'Off'),
+          el('option', { value: 'ascii', selected: g.wholeWord === 'ascii' }, 'ASCII (\\b)'),
+          el('option', { value: 'unicode', selected: g.wholeWord === 'unicode' }, 'Unicode')
+        );
+
+        const card = el(
+          'div',
+          { class: `group${g.visible ? '' : ' hidden-group'}`, 'data-key': g.key },
+          el(
+            'div',
+            { class: 'group-head' },
+            el('input', {
+              type: 'checkbox',
+              checked: g.visible,
+              title: 'Show or hide this group',
+              'aria-label': 'Show group',
+              onchange: set('visible'),
+            }),
+            color,
+            el('input', {
+              type: 'text',
+              value: g.name,
+              'aria-label': 'Group name',
+              oninput: (e) => {
+                g.name = e.target.value || g.key;
+                renderCode();
+              },
+            }),
+            el('span', { class: 'badge', title: 'Matches in this group' }, '0'),
+            el(
+              'button',
+              {
+                type: 'button',
+                class: 'btn icon ghost',
+                title: 'Delete group',
+                'aria-label': 'Delete group',
+                onclick: () => {
+                  groups = groups.filter((x) => x !== g);
+                  h.removeGroup(g.key);
+                  renderGroups();
+                  renderResults();
+                  renderCode();
+                },
+              },
+              '✕'
+            )
+          ),
+          terms,
+          el('div', { class: 'error', role: 'alert' }),
+          el('div', { class: 'row' }, seg, styleSelect),
+          swatches,
+          el(
+            'details',
+            { class: 'more' },
+            el('summary', {}, 'More options'),
+            el(
+              'div',
+              { class: 'opts' },
+              el(
+                'div',
+                { class: 'row' },
+                el(
+                  'label',
+                  { class: 'check' },
+                  el('input', {
+                    type: 'checkbox',
+                    checked: g.caseSensitive,
+                    onchange: set('caseSensitive'),
+                  }),
+                  'Match case'
+                ),
+                el(
+                  'label',
+                  { class: 'check' },
+                  el('input', {
+                    type: 'checkbox',
+                    checked: g.ignoreDiacritics,
+                    onchange: set('ignoreDiacritics'),
+                  }),
+                  'Ignore accents'
+                )
+              ),
+              el(
+                'div',
+                { class: 'grid2' },
+                el('label', { class: 'field' }, 'Whole word', wholeWord),
+                el(
+                  'label',
+                  { class: 'field' },
+                  'Priority',
+                  el('input', {
+                    type: 'number',
+                    value: g.priority,
+                    step: 1,
+                    oninput: set('priority', true),
+                  })
+                )
+              )
+            )
+          )
+        );
+        card.style.setProperty('--swatch', g.color);
+
+        const { error } = termsFor(g);
+        card.querySelector('.error').textContent = error;
+        terms.classList.toggle('invalid', Boolean(error));
+        return card;
+      }
+
+      $('#add-group').onclick = () => {
+        const g = makeGroup();
+        groups.push(g);
+        h.addGroup(libGroup(g));
+        renderGroups();
+        renderCode();
+        document.querySelector(`[data-key="${g.key}"] textarea`)?.focus();
+      };
+
+      // ------------------------------------------------------------ presets & settings
+      function loadPreset(name) {
+        const p = PRESETS[name];
+        markUserChange(); // replacing the text is the page's change, not the library's
+        article.innerHTML = p.html;
+        groups = [];
+        for (const g of p.groups) groups.push(makeGroup(g));
+        $('#q').value = '';
+        count.textContent = '';
+        // New text: don't try to carry the old current match over.
+        search?.disconnect();
+        h?.destroy();
+        h = undefined;
+        renderGroups();
+        build();
+        document
+          .querySelectorAll('[data-preset]')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.preset === name)));
+      }
+      document
+        .querySelectorAll('[data-preset]')
+        .forEach((b) => (b.onclick = () => loadPreset(b.dataset.preset)));
+
+      ['#overlap', '#current-color', '#q-accents', '#q-case', '#q-regex'].forEach((sel) =>
+        $(sel).addEventListener('change', () => {
+          build();
+          if ($('#q').value) search.refresh();
+        })
+      );
+      $('#next').onclick = () => search.next();
+      $('#prev').onclick = () => search.previous();
+      document.addEventListener('keydown', (e) => {
+        const t = e.target;
+        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable;
+        if (e.key === '/' && !typing) {
+          e.preventDefault();
+          $('#q').focus();
+        }
+      });
+      article.addEventListener('mouseleave', () => (tip.hidden = true));
+
+      // Start: ?example=code picks a preset, ?q=… pre-fills the search.
+      const params = new URLSearchParams(location.search);
+      loadPreset(PRESETS[params.get('example')] ? params.get('example') : 'article');
+      if (params.get('q')) {
+        $('#q').value = params.get('q');
+        search.refresh();
+      }
     </script>
   </body>
 </html>
