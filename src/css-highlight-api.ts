@@ -59,5 +59,13 @@ export function getHighlightRegistry(): HighlightRegistryLike | undefined {
  * constructor and the `CSS.highlights` registry must be present.
  */
 export function supportsCssHighlight(): boolean {
-  return getHighlightConstructor() !== undefined && getHighlightRegistry() !== undefined;
+  const Ctor = getHighlightConstructor();
+  const registry = getHighlightRegistry();
+  if (!Ctor || !registry) return false;
+  // Partial implementations (e.g. a polyfill stub) must not be mistaken for the real thing.
+  return (
+    typeof registry.set === 'function' &&
+    typeof registry.delete === 'function' &&
+    typeof Ctor.prototype?.add === 'function'
+  );
 }

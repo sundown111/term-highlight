@@ -110,6 +110,18 @@ export interface HighlighterOptions {
    * `false` disables scrolling. Defaults to `'smooth'`.
    */
   scroll?: false | 'smooth' | 'auto' | 'instant';
+  /**
+   * Stop a match from spanning two block-level elements. By default text nodes
+   * are concatenated directly, so `<p>foo</p><p>bar</p>` matches `foobar`.
+   * With `true`, a virtual line break separates blocks (tag-based: `p`, `div`,
+   * `li`, `h1`-`h6`, `td`, ... ; CSS `display` is not consulted). Defaults to `false`.
+   */
+  blockBoundaries?: boolean;
+  /**
+   * Safety valve: stop after this many matches in total (earlier groups first).
+   * Defaults to unlimited. Does not bound regex execution time.
+   */
+  maxMatches?: number;
   /** How to resolve overlapping matches. Defaults to `'priority'`. */
   overlapStrategy?: OverlapStrategy;
   /** Called when a rendered highlight is clicked. */
@@ -168,7 +180,12 @@ export type HighlightGroupPatch = Partial<Omit<HighlightGroup, 'name'>>;
 export interface Highlighter {
   /** Re-run the matching pass and re-render. Call after the root content changes. */
   update(): void;
-  /** Tear down completely: remove all highlights, styles, and listeners. */
+  /**
+   * Tear down completely: remove all highlights, styles, observers and
+   * listeners and release references to the root and callbacks. Idempotent.
+   * Afterwards every mutating method is a silent no-op and queries return empty
+   * results (`getMatches()` is `[]`, `next()` is `undefined`, `removeGroup()` is `false`).
+   */
   destroy(): void;
   /**
    * Toggle a single group's visibility without re-matching.

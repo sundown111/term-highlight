@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>term-highlight: vanilla JavaScript</title>
+<input id="q" placeholder="Search" />
+<span id="count"></span>
+<article id="content">
+  <p>The quick brown fox jumps over the lazy dog. The dog sleeps.</p>
+</article>
+<script type="module">
+  // From a CDN or your bundler: import { ... } from 'term-highlight';
+  import { createHighlighter, connectSearchInput } from '../../dist/index.js';
+
+  const highlighter = createHighlighter({
+    root: document.getElementById('content'),
+    groups: [],
+    autoUpdate: true,
+  });
+  const search = connectSearchInput(document.getElementById('q'), highlighter, {
+    onChange: (stats) => {
+      document.getElementById('count').textContent = stats.total
+        ? `${stats.position} of ${stats.total}`
+        : '';
+    },
+  });
+
+  // Tear down when you are done (SPA route change, component unmount, ...):
+  addEventListener('pagehide', () => {
+    search.disconnect();
+    highlighter.destroy();
+  });
+</script>
