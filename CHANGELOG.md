@@ -11,6 +11,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 First stable release. The public API from 0.2.0 is now covered by semantic
 versioning: breaking changes will only ship in a new major version.
 
+### Added
+
+- `docs/why-no-wrapper-tags.md`: why term-highlight avoids `<span>` / `<mark>`
+  wrapper tags, the problems they cause, how the CSS Custom Highlight API
+  avoids each one, trade-offs, fallback choice, and a migration guide. The
+  README links to it and summarises the problems.
+
 ### Fixed
 
 - `CONTRIBUTING.md` clone URL points at `sundown111/term-highlight`.

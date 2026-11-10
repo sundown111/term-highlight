@@ -14,14 +14,33 @@ Almost every highlighter works by wrapping each match in an element:
 <p>The <mark>quick</mark> brown <mark>fox</mark></p>
 ```
 
-That one change causes a long list of bugs:
+term-highlight exists to **remove that step**. Wrapping text in `<span>`,
+`<mark>`, or any other tag changes the page's structure, and that one change
+causes a long list of bugs:
 
-- Text nodes get split, so code holding references to them breaks.
-- React, Vue, and other frameworks find DOM they didn't create and either crash
-  during reconciliation or silently throw your highlights away.
-- `contenteditable` editors, selections, and the caret position get corrupted.
-- Layout can shift, and CSS selectors like `p > b` stop matching.
-- Removing the highlights means walking the DOM again and re-joining text.
+- **Frameworks crash or lose highlights.** React, Vue, and others find DOM they
+  didn't create, then throw errors like `The node to be removed is not a child
+of this node` or silently re-render the highlights away.
+- **Editors break.** In `contenteditable` and rich-text editors the caret jumps,
+  undo records the highlights as edits, and `<mark>` tags get saved into the
+  user's content.
+- **Listeners and references are lost.** Rewriting `innerHTML` re-creates every
+  element, dropping event listeners and form input; splitting text nodes breaks
+  any saved `Range` or `Selection`.
+- **XSS risk.** Building highlighted HTML with string `replace()` can inject
+  unescaped page text or search terms into `innerHTML`.
+- **Layout and CSS change.** Selectors like `p > b` or `:first-child` stop
+  matching, and global `mark`/`span` styles can shift text.
+- **Matches across tags** (`hello <b>wor</b>ld`) need several fragments, and
+  overlapping matches need nested tags.
+- **Cleanup is fragile.** Every tag must be found, unwrapped, and its text
+  re-joined, which goes wrong if anything else changed the DOM meanwhile.
+- **Screen readers** may announce every `<mark>` as "highlight".
+- **It's slow at scale.** Thousands of matches mean thousands of DOM writes,
+  repeated on every keystroke.
+
+Each problem is explained with examples in
+**[Why highlight without `<span>` or `<mark>` tags](./docs/why-no-wrapper-tags.md)**.
 
 ## The solution
 
@@ -42,6 +61,20 @@ when content changes, and handle clicks without any element to click on.
 
 Want proof? Run `npm run demo`. The page counts DOM mutations inside the article
 while you search, and the count stays at `0`.
+
+| With `<span>` / `<mark>` wrappers       | With term-highlight                        |
+| --------------------------------------- | ------------------------------------------ |
+| Inserts elements and splits text nodes  | HTML before and after is identical         |
+| Breaks React/Vue re-renders and editors | Framework and editor DOM is never touched  |
+| Re-created elements lose listeners      | No elements are created or re-created      |
+| `innerHTML` string building risks XSS   | No HTML strings are built or parsed        |
+| Cleanup must unwrap and re-join text    | Cleanup just removes registry entries      |
+| One DOM write per match                 | Zero DOM writes; the browser paints ranges |
+
+> **Old browsers:** where the API is missing, the default `fallback: 'dom-span'`
+> uses `<mark>` tags so highlights still show, which brings those problems back.
+> Set `fallback: 'none'` if wrapper tags must never appear. See
+> [Older browsers: choose your fallback](./docs/why-no-wrapper-tags.md#older-browsers-choose-your-fallback).
 
 ## Features
 
