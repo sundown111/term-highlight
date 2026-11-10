@@ -3,7 +3,35 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>term-highlight demo</title>
+    <title>term-highlight: highlight words without span or mark tags</title>
+    <meta
+      name="description"
+      content="Highlight words, keywords, and search terms in a web page without adding span, mark, or any other tag. A zero-dependency TypeScript library built on the CSS Custom Highlight API, with a live demo."
+    />
+    <meta
+      name="keywords"
+      content="word highlight, keyword highlight, text highlight, search highlight, highlight without span, mark.js alternative, CSS Custom Highlight API, find in page, JavaScript, TypeScript"
+    />
+    <link rel="canonical" href="https://sundown111.github.io/term-highlight/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="term-highlight: highlight words without span or mark tags" />
+    <meta
+      property="og:description"
+      content="Highlight words and search terms using the CSS Custom Highlight API. The page's HTML never changes. Try the live demo."
+    />
+    <meta property="og:url" content="https://sundown111.github.io/term-highlight/" />
+    <meta name="twitter:card" content="summary" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "term-highlight",
+        "description": "Highlight words, keywords, and search terms in a web page without span or mark tags, using the CSS Custom Highlight API.",
+        "codeRepository": "https://github.com/sundown111/term-highlight",
+        "programmingLanguage": "TypeScript",
+        "license": "https://opensource.org/licenses/MIT"
+      }
+    </script>
     <style>
       :root {
         --bg: #fbfaf7;
@@ -55,6 +83,23 @@
       header p {
         margin: 0;
         color: var(--muted);
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+        margin-top: 12px;
+        font-size: 0.92rem;
+      }
+      .links a {
+        color: var(--accent);
+      }
+      .links code {
+        padding: 2px 6px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--panel);
       }
       .toolbar {
         position: sticky;
@@ -152,7 +197,18 @@
   <body>
     <header>
       <h1>term-highlight</h1>
-      <p>Highlights in the article below are painted with no span, mark, or div.</p>
+      <p>
+        Highlight words, keywords, and search terms without adding span, mark, or any other tag.
+        Highlights in the article below are painted by the browser; the HTML never changes.
+      </p>
+      <div class="links">
+        <code>npm install term-highlight</code>
+        <a href="https://github.com/sundown111/term-highlight">GitHub</a>
+        <a href="https://www.npmjs.com/package/term-highlight">npm</a>
+        <a href="https://github.com/sundown111/term-highlight/blob/main/docs/why-no-wrapper-tags.md"
+          >Why no span or mark tags?</a
+        >
+      </div>
     </header>
 
     <main>
