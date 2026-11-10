@@ -1,6 +1,6 @@
 # Production readiness
 
-State of the `production-readiness` branch, measured on 2026-11-10 on an Apple
+State of release 1.2.0 (merged in PR #5), measured on 2026-11-10 on an Apple
 M1 Pro (macOS 24.6, arm64, Node 20.10). Nothing below is claimed unless a
 command or test shows it. "Not verified" means exactly that.
 
@@ -81,15 +81,15 @@ measured there. Timer resolution is about 1 ms in those two.
 
 ### P2 DX, docs, release
 
-| Requirement                        | Status                       | Notes                                                                                                                               |
-| ---------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Strict TypeScript, public types    | Done                         | Consumer compile test (ESM + CJS resolution) in `pack:check`; new options documented in `types.ts`                                  |
-| Docs                               | Done                         | README, `docs/guide.md`, `docs/frameworks.md`, `docs/security.md`                                                                   |
-| React / Angular / vanilla examples | Partial                      | Written and reviewed but **not compiled or run** (no React/Angular dependency here). Vanilla example not exercised by a test either |
-| CI                                 | Written, **not run**         | Workflows were not executed on GitHub; commands inside them were all run locally                                                    |
-| Packed artifact validation         | Done                         | `scripts/pack-check.mjs`                                                                                                            |
-| Semver, changelog, SECURITY.md     | Done                         | `CHANGELOG.md` [Unreleased]; version not bumped (release decision is yours)                                                         |
-| npm provenance                     | Configured, **not verified** | `publishConfig.provenance` and `release.yml` (manual, `npm` environment); only a real publish from Actions proves it                |
+| Requirement                        | Status                       | Notes                                                                                                                                     |
+| ---------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Strict TypeScript, public types    | Done                         | Consumer compile test (ESM + CJS resolution) in `pack:check`; new options documented in `types.ts`                                        |
+| Docs                               | Done                         | README, `docs/guide.md`, `docs/frameworks.md`, `docs/security.md`                                                                         |
+| React / Angular / vanilla examples | Partial                      | Written and reviewed but **not compiled or run** (no React/Angular dependency here). Vanilla example not exercised by a test either       |
+| CI                                 | Done                         | Run on GitHub for PR #5 and green: Node 18/20/22 unit jobs, Chromium/Firefox/WebKit job on Ubuntu, packed-tarball check, production audit |
+| Packed artifact validation         | Done                         | `scripts/pack-check.mjs`                                                                                                                  |
+| Semver, changelog, SECURITY.md     | Done                         | `CHANGELOG.md` [Unreleased]; version not bumped (release decision is yours)                                                               |
+| npm provenance                     | Configured, **not verified** | `publishConfig.provenance` and `release.yml` (manual, `npm` environment); only a real publish from Actions proves it                      |
 
 ## Known risks and limitations
 
@@ -102,8 +102,9 @@ measured there. Timer resolution is about 1 ms in those two.
    (hundreds of ms at 100k words). No incremental update path exists.
 3. **Only the latest browser versions** were tested. The documented minimums
    (Chrome 105, Safari 17.2, Firefox 140) are from MDN, not from this repo's tests.
-4. **Node 18 and Windows/Linux** were not exercised locally; CI matrix covers Node
-   18/20/22 on Ubuntu once it runs. WebKit on Linux in CI may differ from macOS WebKit.
+4. **Windows and macOS CI** are not covered: the GitHub matrix is Ubuntu only (Node
+   18/20/22 and Chromium/Firefox/WebKit all passed on PR #5). Local runs were Node
+   20.10 on macOS only. WebKit on Linux may differ from Safari on macOS/iOS.
 5. `blockBoundaries` is tag-based; `<br>` is not a boundary; CSS-hidden text is
    scanned unless excluded.
 6. `strategy: 'dom-span'` remains legacy and mutates the DOM (restored on cleanup).
