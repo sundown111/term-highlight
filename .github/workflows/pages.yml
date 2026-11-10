@@ -1,0 +1,64 @@
+name: Pages
+
+# Publishes the live demo (examples/index.html + the built library) to
+# https://sundown111.github.io/term-highlight/
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/dist
+          cp dist/index.js _site/dist/index.js
+          # The demo imports ../dist/index.js; at the site root it is ./dist/index.js.
+          sed "s#'../dist/index.js'#'./dist/index.js'#" examples/index.html > _site/index.html
+          grep -q "'./dist/index.js'" _site/index.html
+          URL=https://sundown111.github.io/term-highlight/
+          printf 'User-agent: *\nAllow: /\nSitemap: %ssitemap.xml\n' "$URL" > _site/robots.txt
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>%s</loc><lastmod>%s</lastmod></url>\n</urlset>\n' "$URL" "$(date -u +%Y-%m-%d)" > _site/sitemap.xml
+          touch _site/.nojekyll
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

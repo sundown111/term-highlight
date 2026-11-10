@@ -59,7 +59,7 @@ into `Range`s across many text nodes, resolve overlaps, keep it all in sync
 when content changes, and handle clicks without any element to click on.
 **term-highlight does all of that for you.**
 
-Want proof? Run `npm run demo`. The page counts DOM mutations inside the article
+**[Try the live demo](https://sundown111.github.io/term-highlight/)**, or run `npm run demo` locally. The page counts DOM mutations inside the article
 while you search, and the count stays at `0`.
 
 | With `<span>` / `<mark>` wrappers       | With term-highlight                        |
@@ -586,6 +586,10 @@ legend.addEventListener('change', (e) => {
 ```
 
 ## Demo
+
+Live: **https://sundown111.github.io/term-highlight/**
+
+To run it locally:
 
 ```bash
 npm install
