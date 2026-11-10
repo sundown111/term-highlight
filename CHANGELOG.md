@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-10
+
 ### Fixed
 
 - **Overlap resolution is now O(n log n).** It was O(n²): 100,000 matches took
