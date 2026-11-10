@@ -6,6 +6,34 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-10
+
+First stable release. The public API from 0.2.0 is now covered by semantic
+versioning: breaking changes will only ship in a new major version.
+
+### Added
+
+- `docs/why-no-wrapper-tags.md`: why term-highlight avoids `<span>` / `<mark>`
+  wrapper tags, the problems they cause, how the CSS Custom Highlight API
+  avoids each one, trade-offs, fallback choice, and a migration guide. The
+  README links to it and summarises the problems.
+
+### Changed
+
+- **`fallback` now defaults to `'none'`** (was `'dom-span'`). With the default
+  `strategy: 'auto'`, browsers without the CSS Custom Highlight API no longer
+  get `<mark>` tags inserted; nothing is painted there, while matching,
+  navigation, stats, and callbacks keep working. Pass `fallback: 'dom-span'` to
+  restore the old behaviour.
+- The CSS Custom Highlight API (`css-highlight`) is documented as the main
+  strategy; `dom-span` is documented as legacy and opt-in only.
+- More npm keywords for discoverability (word, keyword, text, and search
+  highlighting).
+
+### Fixed
+
+- `CONTRIBUTING.md` clone URL points at `sundown111/term-highlight`.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added
@@ -81,6 +109,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `destroy()` for full cleanup of registry entries, wrapper elements, injected
   styles, and listeners.
 
-[Unreleased]: https://github.com/sundown111/term-highlight/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sundown111/term-highlight/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/sundown111/term-highlight/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/sundown111/term-highlight/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sundown111/term-highlight/releases/tag/v0.1.0

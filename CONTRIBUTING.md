@@ -6,7 +6,7 @@ to get set up and what is expected of contributions.
 ## Getting started
 
 ```bash
-git clone https://github.com/kevinlukose/term-highlight.git
+git clone https://github.com/sundown111/term-highlight.git
 cd term-highlight
 npm install
 ```

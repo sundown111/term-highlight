@@ -23,8 +23,21 @@ afterEach(() => {
 });
 
 describe('strategy resolution', () => {
-  it('falls back to dom-span when the CSS Highlight API is absent', () => {
-    active = createHighlighter({ root: root('cat'), groups: [{ name: 'c', terms: ['cat'] }] });
+  it("falls back to 'none' (no DOM changes) when the CSS Highlight API is absent", () => {
+    const el = root('cat');
+    active = createHighlighter({ root: el, groups: [{ name: 'c', terms: ['cat'] }] });
+    expect(active.activeStrategy).toBe('none');
+    expect(active.getMatches()).toHaveLength(1);
+    expect(el.innerHTML).toBe('cat');
+    expect(document.querySelector('mark')).toBeNull();
+  });
+
+  it("uses dom-span only when fallback: 'dom-span' is requested", () => {
+    active = createHighlighter({
+      root: root('cat'),
+      fallback: 'dom-span',
+      groups: [{ name: 'c', terms: ['cat'] }],
+    });
     expect(active.activeStrategy).toBe('dom-span');
   });
 

@@ -241,7 +241,6 @@
       const hint = document.getElementById('hint');
       const h = createHighlighter({
         root: article,
-        fallback: 'none', // never wrap text, even where the API is missing
         groups: groups.map(({ label, swatch, ...g }) => g),
         currentStyle: { backgroundColor: '#ff9632', color: '#000' },
         onHighlightHover: (m) => {

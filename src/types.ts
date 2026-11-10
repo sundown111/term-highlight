@@ -26,10 +26,13 @@ export type OverlapStrategy = 'first-match' | 'priority' | 'allow-overlap';
 /**
  * Rendering strategy. See the README "Rendering strategies" section.
  *
- * - `css-highlight`: paint with the CSS Custom Highlight API (no DOM mutation).
- * - `dom-span`: wrap matches in `<mark>` elements.
+ * - `css-highlight`: **the main strategy.** Paints with the CSS Custom
+ *   Highlight API; no element is inserted and the DOM is never modified.
  * - `none`: match and navigate, but paint nothing and never touch the DOM.
- * - `auto`: `css-highlight` when available, otherwise {@link HighlighterOptions.fallback}.
+ * - `dom-span`: legacy opt-in that wraps matches in `<mark>` elements. Only
+ *   used when you ask for it explicitly.
+ * - `auto` (default): `css-highlight` when available, otherwise
+ *   {@link HighlighterOptions.fallback} (`'none'` by default).
  */
 export type Strategy = 'auto' | 'css-highlight' | 'dom-span' | 'none';
 
@@ -85,8 +88,9 @@ export interface HighlighterOptions {
   strategy?: Strategy;
   /**
    * Used by `strategy: 'auto'` when the CSS Custom Highlight API is missing.
-   * `'dom-span'` (default) wraps matches in `<mark>`; `'none'` guarantees the
-   * DOM is never modified, at the cost of painting nothing on old browsers.
+   * `'none'` (default) keeps the DOM untouched and paints nothing on those
+   * browsers; matching, navigation, stats, and callbacks still work.
+   * `'dom-span'` opts in to wrapping matches in `<mark>` elements instead.
    */
   fallback?: 'dom-span' | 'none';
   /**
