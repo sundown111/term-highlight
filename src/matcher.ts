@@ -14,6 +14,14 @@ const SKIPPED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA']);
 export interface MatchOptions {
   /** CSS selector for subtrees whose text is not scanned. */
   exclude?: string;
+  /**
+   * When true, a match may not span two block-level elements (`<p>`, `<div>`,
+   * `<li>`, ...). A virtual line break is placed between blocks in the scanned
+   * text so `foo</p><p>bar` no longer matches `foobar`. Default: false.
+   */
+  blockBoundaries?: boolean;
+  /** Stop collecting after this many matches in total (a safety valve). Default: unlimited. */
+  maxMatches?: number;
 }
 
 /** A contiguous run of a single text node within the concatenated string. */
@@ -29,6 +37,8 @@ interface TextSegment {
 export interface TextModel {
   text: string;
   segments: TextSegment[];
+  /** Sorted offsets of virtual block separators (not backed by any DOM text). */
+  separators?: number[];
 }
 
 /** A match before it is assigned a document-order index. */
@@ -46,6 +56,60 @@ interface RawMatch {
  */
 export function escapeRegExp(literal: string): string {
   return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Elements that start a new line of text; used by `blockBoundaries`. */
+const BLOCK_TAGS = new Set([
+  'ADDRESS',
+  'ARTICLE',
+  'ASIDE',
+  'BLOCKQUOTE',
+  'BODY',
+  'CAPTION',
+  'DD',
+  'DETAILS',
+  'DIALOG',
+  'DIV',
+  'DL',
+  'DT',
+  'FIELDSET',
+  'FIGCAPTION',
+  'FIGURE',
+  'FOOTER',
+  'FORM',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'HEADER',
+  'HGROUP',
+  'HR',
+  'LI',
+  'MAIN',
+  'NAV',
+  'OL',
+  'P',
+  'PRE',
+  'SECTION',
+  'SUMMARY',
+  'TABLE',
+  'TBODY',
+  'TD',
+  'TFOOT',
+  'TH',
+  'THEAD',
+  'TR',
+  'UL',
+]);
+
+/** Nearest block-level ancestor of `node` inside `root` (or `root` itself). */
+function blockOf(node: Node, root: HTMLElement): Node {
+  for (let el: Node | null = node.parentNode; el && el !== root; el = el.parentNode) {
+    if (el.nodeType === 1 && BLOCK_TAGS.has((el as Element).tagName.toUpperCase())) return el;
+  }
+  return root;
 }
 
 /** Return true if the text node should be included (no skipped ancestor). */
@@ -141,7 +205,6 @@ export function isUnicodeWordBounded(text: string, start: number, end: number): 
 export function buildTextModel(root: HTMLElement, options: MatchOptions = {}): TextModel {
   const exclude = options.exclude?.trim() || undefined;
   const segments: TextSegment[] = [];
-  let text = '';
   const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node: Node): number {
       return isScannable(node as Text, root, exclude)
@@ -150,18 +213,34 @@ export function buildTextModel(root: HTMLElement, options: MatchOptions = {}): T
     },
   });
 
+  const separators: number[] = [];
+  let lastBlock: Node | undefined;
+  const parts: string[] = [];
+  let length = 0;
+
   let current = walker.nextNode() as Text | null;
   while (current) {
     const data = current.data;
     if (data.length > 0) {
-      const start = text.length;
-      text += data;
-      segments.push({ node: current, start, end: text.length });
+      if (options.blockBoundaries) {
+        const block = blockOf(current, root);
+        if (lastBlock !== undefined && block !== lastBlock) {
+          separators.push(length);
+          parts.push('\n');
+          length += 1;
+        }
+        lastBlock = block;
+      }
+      const start = length;
+      parts.push(data);
+      length += data.length;
+      segments.push({ node: current, start, end: length });
     }
     current = walker.nextNode() as Text | null;
   }
 
-  return { text, segments };
+  const text = parts.join('');
+  return options.blockBoundaries ? { text, segments, separators } : { text, segments };
 }
 
 /**
@@ -218,11 +297,32 @@ export function buildGroupRegExp(group: HighlightGroup): RegExp | undefined {
   return new RegExp(pattern, flags);
 }
 
+function lowerBound(sorted: number[], value: number): number {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid]! < value) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function isSeparator(sorted: number[], offset: number): boolean {
+  return sorted[lowerBound(sorted, offset)] === offset;
+}
+
+function hasSeparatorIn(sorted: number[], start: number, end: number): boolean {
+  const i = lowerBound(sorted, start);
+  return i < sorted.length && sorted[i]! < end;
+}
+
 /** Run one group's regex over the text model, collecting raw matches. */
 function collectGroupMatches(
   model: TextModel,
   group: HighlightGroup,
-  foldedText: () => string
+  foldedText: () => string,
+  limit: number
 ): RawMatch[] {
   const regex = buildGroupRegExp(group);
   if (!regex) return [];
@@ -236,7 +336,8 @@ function collectGroupMatches(
   let m: RegExpExecArray | null;
 
   regex.lastIndex = 0;
-  while ((m = regex.exec(haystack)) !== null) {
+  const seps = model.separators;
+  while (out.length < limit && (m = regex.exec(haystack)) !== null) {
     const length = m[0].length;
     if (length === 0) {
       // Zero-length match (e.g. a regex like `a*`): advance to avoid an infinite
@@ -244,8 +345,14 @@ function collectGroupMatches(
       regex.lastIndex += 1;
       continue;
     }
-    const start = m.index;
-    const end = start + length;
+    let start = m.index;
+    let end = start + length;
+    if (seps && seps.length > 0) {
+      // Trim virtual separators off the edges, then reject matches that still straddle one.
+      while (start < end && isSeparator(seps, start)) start += 1;
+      while (end > start && isSeparator(seps, end - 1)) end -= 1;
+      if (end <= start || hasSeparatorIn(seps, start, end)) continue;
+    }
     if (unicodeWords && !isUnicodeWordBounded(model.text, start, end)) {
       // Retry from the next character so a shorter alternative can still match.
       regex.lastIndex = start + 1;
@@ -291,11 +398,22 @@ export function resolveOverlaps(matches: RawMatch[], strategy: OverlapStrategy):
     candidates.sort((a, b) => a.start - b.start || b.end - a.end);
   }
 
+  // `accepted` stays sorted by start and pairwise disjoint, so an overlap
+  // check only needs the two neighbours found by binary search: O(n log n)
+  // overall instead of comparing against every accepted match.
   const accepted: RawMatch[] = [];
   for (const cand of candidates) {
-    if (!accepted.some((acc) => overlaps(acc, cand))) {
-      accepted.push(cand);
+    let lo = 0;
+    let hi = accepted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (accepted[mid]!.start < cand.start) lo = mid + 1;
+      else hi = mid;
     }
+    const before = accepted[lo - 1];
+    const after = accepted[lo];
+    if ((before && overlaps(before, cand)) || (after && overlaps(after, cand))) continue;
+    accepted.splice(lo, 0, cand);
   }
 
   return accepted.sort(byDocOrder);
@@ -364,6 +482,8 @@ export function computeMatches(
   overlapStrategy: OverlapStrategy,
   options: MatchOptions = {}
 ): { matches: MatchInfo[]; model: TextModel } {
+  // Nothing to look for: skip walking the whole subtree.
+  if (groups.length === 0) return { matches: [], model: { text: '', segments: [] } };
   const model = buildTextModel(root, options);
   if (model.text.length === 0) {
     return { matches: [], model };
@@ -373,8 +493,11 @@ export function computeMatches(
   const foldedText = (): string => (folded ??= foldDiacritics(model.text));
 
   const raw: RawMatch[] = [];
+  const budget = options.maxMatches ?? Infinity;
   for (const group of groups) {
-    raw.push(...collectGroupMatches(model, group, foldedText));
+    if (raw.length >= budget) break;
+    // Appended one by one: spreading a large array into push() overflows the stack.
+    for (const r of collectGroupMatches(model, group, foldedText, budget - raw.length)) raw.push(r);
   }
 
   const resolved = resolveOverlaps(raw, overlapStrategy);

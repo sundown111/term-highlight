@@ -9,7 +9,7 @@ import type {
   ResolvedStrategy,
   Term,
 } from './types.js';
-import { computeMatches, type MatchOptions, type TextModel } from './matcher.js';
+import { buildGroupRegExp, computeMatches, type MatchOptions, type TextModel } from './matcher.js';
 import type { Renderer, RendererContext } from './renderers/renderer.js';
 import { createRenderer, resolveStrategy } from './renderers/detect.js';
 import { debounce, nextInstanceId, scrollRectToCenter } from './utils.js';
@@ -24,20 +24,48 @@ function assertGroup(group: HighlightGroup): void {
   if (!group || typeof group.name !== 'string' || group.name.length === 0) {
     throw new TypeError('term-highlight: every group needs a non-empty string `name`.');
   }
+  const label = `term-highlight: group "${group.name}"`;
   if (!Array.isArray(group.terms)) {
-    throw new TypeError(`term-highlight: group "${group.name}" needs a \`terms\` array.`);
+    throw new TypeError(`${label} needs a \`terms\` array.`);
+  }
+  for (const term of group.terms) {
+    const ok =
+      typeof term === 'string' ||
+      term instanceof RegExp ||
+      (Array.isArray(term) && term.every((t) => typeof t === 'string'));
+    if (!ok) {
+      throw new TypeError(`${label} has an invalid term; use a string, string[] or RegExp.`);
+    }
+  }
+  if (group.priority !== undefined && !Number.isFinite(group.priority)) {
+    throw new TypeError(`${label} has a non-finite \`priority\`.`);
+  }
+  if (
+    group.wholeWord !== undefined &&
+    typeof group.wholeWord !== 'boolean' &&
+    group.wholeWord !== 'unicode'
+  ) {
+    throw new TypeError(`${label} has an invalid \`wholeWord\` (use boolean or 'unicode').`);
+  }
+  try {
+    buildGroupRegExp(group);
+  } catch (error) {
+    throw new TypeError(
+      `${label} has a pattern that cannot be compiled: ${(error as Error).message}`
+    );
   }
 }
 
 class HighlighterImpl implements Highlighter {
   readonly activeStrategy: ResolvedStrategy;
 
-  private readonly root: HTMLElement;
+  private root: HTMLElement;
   private groups: HighlightGroup[];
   private readonly overlapStrategy: OverlapStrategy;
   private readonly matchOptions: MatchOptions;
-  private readonly options: HighlighterOptions;
+  private options: HighlighterOptions;
   private readonly renderer: Renderer;
+  private readonly ctx: RendererContext;
   private readonly observer: MutationObserver | undefined;
   private readonly scheduleAutoUpdate: { (): void; cancel(): void };
   private readonly visible = new Map<string, boolean>();
@@ -60,7 +88,11 @@ class HighlighterImpl implements Highlighter {
     // Own a copy so runtime group changes never mutate the caller's array.
     this.groups = options.groups.slice();
     this.overlapStrategy = options.overlapStrategy ?? 'priority';
-    this.matchOptions = options.exclude ? { exclude: options.exclude } : {};
+    this.matchOptions = {
+      ...(options.exclude ? { exclude: options.exclude } : {}),
+      ...(options.blockBoundaries ? { blockBoundaries: true } : {}),
+      ...(options.maxMatches !== undefined ? { maxMatches: options.maxMatches } : {}),
+    };
     for (const g of this.groups) this.visible.set(g.name, true);
 
     this.activeStrategy = resolveStrategy(options.strategy ?? 'auto', options.fallback);
@@ -73,6 +105,7 @@ class HighlighterImpl implements Highlighter {
       ...(options.onHighlightClick ? { onClick: options.onHighlightClick } : {}),
       ...(options.onHighlightHover ? { onHover: options.onHighlightHover } : {}),
     };
+    this.ctx = ctx;
     this.renderer = createRenderer(this.activeStrategy, ctx);
 
     const auto = options.autoUpdate;
@@ -88,7 +121,13 @@ class HighlighterImpl implements Highlighter {
       }
     }
 
-    this.update();
+    try {
+      this.update();
+    } catch (error) {
+      // Never leave listeners, registry entries or a <style> tag behind.
+      this.destroy();
+      throw error;
+    }
   }
 
   // ---------------------------------------------------------------- matching
@@ -98,20 +137,37 @@ class HighlighterImpl implements Highlighter {
     this.observer?.disconnect();
 
     const previous = this.current;
+    let matches: MatchInfo[];
+    try {
+      // Undo any previous rendering first so matching runs against the clean,
+      // original DOM and captured node references stay valid through render.
+      this.renderer.clear();
 
-    // Undo any previous rendering first so matching runs against the clean,
-    // original DOM and captured node references stay valid through render.
-    this.renderer.clear();
-
-    const { matches, model } = computeMatches(
-      this.root,
-      this.groups,
-      this.overlapStrategy,
-      this.matchOptions
-    );
-    this.matches = matches;
-    this.currentIndex = -1;
-    this.render(model);
+      // A removed root would otherwise leave detached nodes pinned by the global
+      // highlight registry. It simply has no matches until it is attached again.
+      if (this.root.isConnected === false && this.activeStrategy === 'css-highlight') {
+        this.matches = [];
+        this.currentIndex = -1;
+        matches = [];
+      } else {
+        const result = computeMatches(
+          this.root,
+          this.groups,
+          this.overlapStrategy,
+          this.matchOptions
+        );
+        matches = result.matches;
+        this.matches = matches;
+        this.currentIndex = -1;
+        this.render(result.model);
+      }
+    } catch (error) {
+      this.matches = [];
+      this.currentIndex = -1;
+      this.renderer.clear();
+      if (this.observer && !this.destroyed) this.observer.observe(this.root, OBSERVER_CONFIG);
+      throw error;
+    }
 
     // Keep the user's place across re-matches (live content, typing, toggles).
     if (previous) {
@@ -161,6 +217,7 @@ class HighlighterImpl implements Highlighter {
   }
 
   getMatchAt(clientX: number, clientY: number): MatchInfo | undefined {
+    if (this.destroyed) return undefined;
     return this.renderer.matchAtPoint(clientX, clientY);
   }
 
@@ -171,6 +228,7 @@ class HighlighterImpl implements Highlighter {
   }
 
   setTerms(name: string, terms: Term[]): void {
+    if (this.destroyed) return;
     if (this.groups.some((g) => g.name === name)) {
       this.updateGroup(name, { terms });
     } else {
@@ -179,21 +237,23 @@ class HighlighterImpl implements Highlighter {
   }
 
   addGroup(group: HighlightGroup): void {
+    if (this.destroyed) return;
     assertGroup(group);
     const next = this.groups.filter((g) => g.name !== group.name);
     next.push({ ...group });
-    if (!this.visible.has(group.name)) this.visible.set(group.name, true);
     this.replaceGroups(next);
+    if (!this.visible.has(group.name)) this.visible.set(group.name, true);
   }
 
   removeGroup(name: string): boolean {
-    if (!this.groups.some((g) => g.name === name)) return false;
-    this.visible.delete(name);
+    if (this.destroyed || !this.groups.some((g) => g.name === name)) return false;
     this.replaceGroups(this.groups.filter((g) => g.name !== name));
+    this.visible.delete(name);
     return true;
   }
 
   updateGroup(name: string, patch: HighlightGroupPatch): void {
+    if (this.destroyed) return;
     const index = this.groups.findIndex((g) => g.name === name);
     if (index === -1) {
       throw new Error(`term-highlight: no group named "${name}".`);
@@ -205,37 +265,56 @@ class HighlighterImpl implements Highlighter {
   }
 
   clear(): void {
+    if (this.destroyed) return;
     this.visible.clear();
     this.replaceGroups([]);
   }
 
   private replaceGroups(groups: HighlightGroup[]): void {
     if (this.destroyed) return;
+    // Validate everything before touching state so a bad group changes nothing.
+    groups.forEach(assertGroup);
+    const previous = this.groups;
     // Clear while the renderer still knows the old groups so every old
     // registry entry / wrapper is removed.
     this.renderer.clear();
     this.groups = groups;
     this.renderer.setGroups(groups);
-    this.update();
+    try {
+      this.update();
+    } catch (error) {
+      this.groups = previous;
+      this.renderer.setGroups(previous);
+      try {
+        this.update();
+      } catch {
+        /* keep the original error */
+      }
+      throw error;
+    }
   }
 
   // -------------------------------------------------------------- visibility
 
   isGroupVisible(name: string): boolean {
+    if (this.destroyed) return false;
     return this.visible.get(name) !== false;
   }
 
   toggleGroup(name: string, on?: boolean): void {
+    if (this.destroyed) return;
     this.setVisible(name, on ?? !this.isGroupVisible(name));
     this.dropHiddenCurrent();
   }
 
   toggleAll(on?: boolean): void {
+    if (this.destroyed) return;
     for (const g of this.groups) this.setVisible(g.name, on ?? !this.isGroupVisible(g.name));
     this.dropHiddenCurrent();
   }
 
   showOnly(name: string): void {
+    if (this.destroyed) return;
     for (const g of this.groups) this.setVisible(g.name, g.name === name);
     this.dropHiddenCurrent();
   }
@@ -270,6 +349,7 @@ class HighlighterImpl implements Highlighter {
   }
 
   goTo(index: number): MatchInfo | undefined {
+    if (this.destroyed) return undefined;
     const target = this.matches[index];
     if (!target || !this.isGroupVisible(target.group)) return undefined;
     this.setCurrentMatch(target, true);
@@ -277,10 +357,12 @@ class HighlighterImpl implements Highlighter {
   }
 
   clearCurrent(): void {
+    if (this.destroyed) return;
     this.setCurrentMatch(undefined, false);
   }
 
   private move(delta: number): MatchInfo | undefined {
+    if (this.destroyed) return undefined;
     const visibleMatches = this.matches.filter((m) => this.isGroupVisible(m.group));
     if (visibleMatches.length === 0) {
       this.setCurrentMatch(undefined, false);
@@ -336,8 +418,17 @@ class HighlighterImpl implements Highlighter {
     this.scheduleAutoUpdate.cancel();
     this.observer?.disconnect();
     this.renderer.destroy();
+    // Drop every reference that could pin the DOM or the caller's closures
+    // while someone still holds this object (e.g. a framework ref).
     this.matches = [];
+    this.groups = [];
+    this.visible.clear();
     this.currentIndex = -1;
+    this.ctx.groups = [];
+    delete this.ctx.onClick;
+    delete this.ctx.onHover;
+    this.options = {} as HighlighterOptions;
+    this.root = undefined as unknown as HTMLElement;
   }
 }
 

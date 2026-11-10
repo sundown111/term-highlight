@@ -5,7 +5,14 @@ import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', 'coverage/**', '**/node_modules/**', 'examples/**'],
+    ignores: [
+      '**/dist/**',
+      'coverage/**',
+      '**/node_modules/**',
+      'examples/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -20,16 +27,22 @@ export default tseslint.config(
   },
   {
     // Test files and scripts may use a few more escape hatches.
-    files: ['test/**/*.ts', 'scripts/**/*.{js,mjs,cjs}'],
+    files: ['test/**/*.ts', 'e2e/**/*.ts', 'scripts/**/*.{js,mjs,cjs}', 'bench/**/*.mjs'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {
     // Node scripts (smoke tests) run in Node, not the browser.
-    files: ['scripts/**/*.{js,mjs,cjs}'],
+    files: ['scripts/**/*.{js,mjs,cjs}', 'bench/**/*.mjs', 'e2e/**/*.mjs'],
     languageOptions: {
       globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        performance: 'readonly',
+        PerformanceObserver: 'readonly',
+        setTimeout: 'readonly',
         console: 'readonly',
         process: 'readonly',
         module: 'writable',

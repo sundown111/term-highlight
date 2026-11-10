@@ -272,9 +272,10 @@ once per animation frame. You can also hit-test any point yourself with
   selector.
 - All text nodes are concatenated **directly** (no separators) into one string
   with an offset map back to `(text node, offset)`. This is what lets a term
-  match across adjacent inline elements. (It also means a phrase can match across
-  a block boundary if the rendered text happens to be adjacent, e.g.
-  `<div>foo</div><div>bar</div>` contains `foobar`.)
+  match across adjacent inline elements. By default it also means a phrase can
+  match across a block boundary, e.g. `<div>foo</div><div>bar</div>` contains
+  `foobar`. Set `blockBoundaries: true` to put a virtual line break between
+  block-level elements (tag-based) so matches can no longer cross them.
 - Literal `string` / `string[]` terms are **auto-escaped**, de-duplicated, and
   tried **longest first**, so `['cat', 'category']` highlights all of
   "category" rather than just "cat". `RegExp` terms use their `source` as-is. All terms in a group are combined into **one** regex via
@@ -333,6 +334,8 @@ Creates a highlighter and runs the first matching pass immediately.
 | `exclude`          | `string` (CSS selector)                             | —            | Subtrees to skip, e.g. `'code, pre, [data-no-highlight]'`.                    |
 | `autoUpdate`       | `boolean \| { debounce?: number }`                  | `false`      | Re-match when the root subtree mutates, optionally debounced (ms).            |
 | `overlapStrategy`  | `'first-match' \| 'priority' \| 'allow-overlap'`    | `'priority'` | How to resolve overlapping matches.                                           |
+| `blockBoundaries`  | `boolean`                                           | `false`      | Stop matches from spanning block elements (`p`, `div`, `li`, `td`, ...).      |
+| `maxMatches`       | `number`                                            | unlimited    | Stop after this many matches (safety valve; does not bound regex run time).   |
 | `scroll`           | `false \| 'smooth' \| 'auto' \| 'instant'`          | `'smooth'`   | How navigation scrolls the current match to the centre of its container.      |
 | `currentStyle`     | `Partial<CSSStyleDeclaration>`                      | orange bg    | Style for the "current" match set by `next()` / `previous()` / `goTo()`.      |
 | `onHighlightClick` | `(match, event) => void`                            | —            | A highlight was clicked.                                                      |
@@ -485,6 +488,22 @@ const h = createHighlighter({ root, groups, autoUpdate: true });
 
 `autoUpdate` uses a `MutationObserver`; it disconnects itself while it re-renders
 so its own changes don't cause a feedback loop.
+
+## Production guide
+
+Deeper documentation lives in [`docs/`](docs/):
+
+- [`docs/guide.md`](docs/guide.md): lifecycle and `destroy()` contract, matching
+  and overlap behaviour, Unicode, MutationObserver behaviour, SSR, performance
+  characteristics, limitations, troubleshooting and migration notes.
+- [`docs/frameworks.md`](docs/frameworks.md): vanilla JavaScript, React and
+  Angular integration.
+- [`docs/security.md`](docs/security.md): regular-expression risks, CSS/DOM
+  safety, supported-version policy.
+- [`bench/RESULTS.md`](bench/RESULTS.md): reproducible browser benchmarks
+  (`npm run bench`).
+- [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md): what is verified, how,
+  and what is not.
 
 ## Recipes
 

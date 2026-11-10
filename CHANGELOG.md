@@ -6,6 +6,69 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Overlap resolution is now O(n log n).** It was O(n²): 100,000 matches took
+  about 8 s (jsdom); 200,000 now take under a second.
+- **No stack overflow on very large result sets.** Matches from a group were
+  spread into `push(...)`, which threw `RangeError: Maximum call stack size
+  exceeded` at roughly 150,000 matches.
+- **Group changes are atomic.** If `addGroup` / `updateGroup` / `setTerms` is
+  given something that cannot compile (for example two `RegExp` terms with the
+  same named capture group), a `TypeError` is thrown and the previous groups,
+  matches and registry entries are kept. Previously the state was left half
+  replaced.
+- **A failed `update()` no longer disconnects `autoUpdate`.**
+- **A constructor that throws no longer leaks** listeners, registry entries or a
+  `<style>` tag.
+- **Instance ids are unique across duplicate copies of the library** (for example
+  an ESM and a CommonJS build on one page). They shared a module-local counter
+  and could overwrite each other's `CSS.highlights` entries.
+- **Unsafe style values are dropped** instead of being written into the generated
+  `<style>` rule (`color: 'red; } body { display: none'` could previously break out
+  of the `::highlight()` rule).
+- **Partial Highlight API support** (a `Highlight` constructor without a usable
+  registry, or a non-Map-like registry) is detected as unsupported instead of
+  failing later.
+- A root removed from the document no longer keeps its nodes pinned in the
+  global highlight registry: highlights are cleared, and return on the next
+  `update()` once the root is attached again (`css-highlight` only).
+
+### Added
+
+- `blockBoundaries: true` option: matches can no longer span block-level
+  elements. Default `false`, so existing behaviour is unchanged.
+- `maxMatches` option: stop after N matches.
+- Defined behaviour after `destroy()`: mutating methods are silent no-ops and
+  queries return empty results; the instance releases its root, groups and
+  callbacks.
+- Stricter validation with clear `TypeError`s: non-string/array/RegExp terms,
+  non-finite `priority`, invalid `wholeWord`, and patterns that cannot be
+  compiled.
+- Source maps (`dist/*.map`), `README`/`LICENSE`/`CHANGELOG` in the package, npm
+  provenance configuration.
+- Test infrastructure: 184 Vitest tests with enforced coverage thresholds,
+  Playwright suites for Chromium, Firefox and WebKit (rendering, priorities,
+  click/hover, navigation, dynamic updates, cleanup, unsupported-API mocks, heap
+  leak and performance guards), reproducible benchmarks (`npm run bench`),
+  packed-tarball validation (`npm run pack:check`).
+- `docs/guide.md`, `docs/frameworks.md`, `docs/security.md`, `SECURITY.md`,
+  `PRODUCTION_READINESS.md`, framework examples.
+
+### Changed
+
+- Invalid group definitions that were previously ignored silently (for example a
+  numeric term) now throw a `TypeError`. This is the only behavioural change that
+  could affect existing callers.
+- CI runs coverage thresholds, browser tests, the packed-tarball check and a
+  production dependency audit.
+
+## [1.1.0]
+
+### Changed
+
+- The demo page became an interactive playground (no library API changes).
+
 ## [1.0.0] - 2026-11-10
 
 First stable release. The public API from 0.2.0 is now covered by semantic

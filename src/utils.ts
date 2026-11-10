@@ -5,6 +5,41 @@ export function camelToKebab(prop: string): string {
   return prop.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`).replace(/^-ms-/, '-ms-');
 }
 
+const SAFE_PROPERTY = /^-{0,2}[a-z][a-z0-9-]*$/;
+// Anything that could end the declaration, close the rule, open a comment or
+// at-rule, escape, or break out of the <style> element.
+const UNSAFE_VALUE = /[{};<>\\\n\r\f]|\/\*|\*\/|@import|expression\(/i;
+
+/**
+ * Whether one declaration is safe to place inside a generated `::highlight()`
+ * rule. Rejects values that could terminate the declaration or rule and
+ * inject other CSS (`red; } body { display: none`), unbalanced quotes or
+ * parentheses, and (where `CSS.supports` exists) values the browser rejects.
+ */
+export function isSafeDeclaration(prop: string, value: string): boolean {
+  if (!SAFE_PROPERTY.test(prop) || UNSAFE_VALUE.test(value)) return false;
+  let depth = 0;
+  let quote = '';
+  for (const c of value) {
+    if (quote) {
+      if (c === quote) quote = '';
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '(') depth += 1;
+    else if (c === ')' && --depth < 0) return false;
+  }
+  if (quote || depth !== 0) return false;
+  const css = (globalThis as unknown as { CSS?: { supports?: (p: string, v: string) => boolean } })
+    .CSS;
+  if (typeof css?.supports === 'function') {
+    try {
+      return css.supports(prop, value);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Serialize a partial `CSSStyleDeclaration`-like object into a CSS declaration
  * body (e.g. `background-color: yellow; color: black;`). Numeric-indexed and
@@ -17,20 +52,28 @@ export function styleToCssText(style: Partial<CSSStyleDeclaration> | undefined):
     if (/^\d+$/.test(key)) continue; // numeric index accessors on CSSStyleDeclaration
     const value = (style as Record<string, unknown>)[key];
     if (value == null || typeof value === 'function') continue;
-    const text = String(value);
+    const text = String(value).trim();
     if (text.length === 0) continue;
-    parts.push(`${camelToKebab(key)}: ${text};`);
+    const prop = camelToKebab(key);
+    if (!isSafeDeclaration(prop, text)) continue;
+    parts.push(`${prop}: ${text};`);
   }
   return parts.join(' ');
 }
 
-/** Monotonic counter for generating unique per-instance ids within a page. */
-let instanceCounter = 0;
+const COUNTER_KEY = Symbol.for('term-highlight.instanceCounter');
 
-/** Generate a short unique id used to namespace highlight names / classes. */
+/**
+ * Generate a short id used to namespace highlight names / classes. The counter
+ * lives on `globalThis` so two copies of the library on one page (for example
+ * an ESM and a CJS build, or two bundles) never hand out the same id and
+ * clobber each other's `CSS.highlights` entries.
+ */
 export function nextInstanceId(): string {
-  instanceCounter += 1;
-  return `th${instanceCounter}`;
+  const g = globalThis as unknown as Record<symbol, number | undefined>;
+  const next = (g[COUNTER_KEY] ?? 0) + 1;
+  g[COUNTER_KEY] = next;
+  return `th${next}`;
 }
 
 /**

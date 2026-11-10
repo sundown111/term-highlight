@@ -14,7 +14,8 @@ export default defineConfig({
         'src/types.ts',
         'src/renderers/renderer.ts', // type-only interface, no runtime code
       ],
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json-summary'],
+      thresholds: { statements: 95, lines: 95, functions: 95, branches: 88 },
     },
   },
 });

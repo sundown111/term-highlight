@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>term-highlight e2e fixture</title>
+<style>
+  body {
+    margin: 0;
+    font: 32px/1.4 monospace;
+    background: #fff;
+    color: #000;
+  }
+  #root {
+    padding: 20px;
+    width: 900px;
+  }
+  #scroller {
+    height: 120px;
+    overflow: auto;
+    border: 1px solid #999;
+  }
+</style>
+<div id="root">
+  <p id="p1">cat dog bird cat</p>
+  <p id="p2">fish cat</p>
+</div>
+<div id="scroller"><div id="long"></div></div>
+<script type="module">
+  import * as lib from '/dist/index.js';
+  window.lib = lib;
+  window.ready = true;
+</script>
