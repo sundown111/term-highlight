@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-10
+
+First stable release. The public API from 0.2.0 is now covered by semantic
+versioning: breaking changes will only ship in a new major version.
+
+### Fixed
+
+- `CONTRIBUTING.md` clone URL points at `sundown111/term-highlight`.
+
 ## [0.2.0] - 2026-11-03
 
 ### Added
@@ -81,6 +90,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `destroy()` for full cleanup of registry entries, wrapper elements, injected
   styles, and listeners.
 
-[Unreleased]: https://github.com/sundown111/term-highlight/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sundown111/term-highlight/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/sundown111/term-highlight/compare/v0.2.0...v1.0.0
 [0.2.0]: https://github.com/sundown111/term-highlight/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sundown111/term-highlight/releases/tag/v0.1.0
