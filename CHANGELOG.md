@@ -18,6 +18,18 @@ versioning: breaking changes will only ship in a new major version.
   avoids each one, trade-offs, fallback choice, and a migration guide. The
   README links to it and summarises the problems.
 
+### Changed
+
+- **`fallback` now defaults to `'none'`** (was `'dom-span'`). With the default
+  `strategy: 'auto'`, browsers without the CSS Custom Highlight API no longer
+  get `<mark>` tags inserted; nothing is painted there, while matching,
+  navigation, stats, and callbacks keep working. Pass `fallback: 'dom-span'` to
+  restore the old behaviour.
+- The CSS Custom Highlight API (`css-highlight`) is documented as the main
+  strategy; `dom-span` is documented as legacy and opt-in only.
+- More npm keywords for discoverability (word, keyword, text, and search
+  highlighting).
+
 ### Fixed
 
 - `CONTRIBUTING.md` clone URL points at `sundown111/term-highlight`.

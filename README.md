@@ -71,16 +71,17 @@ while you search, and the count stays at `0`.
 | Cleanup must unwrap and re-join text    | Cleanup just removes registry entries      |
 | One DOM write per match                 | Zero DOM writes; the browser paints ranges |
 
-> **Old browsers:** where the API is missing, the default `fallback: 'dom-span'`
-> uses `<mark>` tags so highlights still show, which brings those problems back.
-> Set `fallback: 'none'` if wrapper tags must never appear. See
-> [Older browsers: choose your fallback](./docs/why-no-wrapper-tags.md#older-browsers-choose-your-fallback).
+> **Old browsers:** where the API is missing, term-highlight still never adds
+> tags. By default it paints nothing there, while search, navigation, counts,
+> and callbacks keep working. If you'd rather show `<mark>` tags on those
+> browsers, opt in with `fallback: 'dom-span'`. See
+> [Older browsers](./docs/why-no-wrapper-tags.md#older-browsers).
 
 ## Features
 
 - **No DOM changes** with the CSS Custom Highlight API (Chrome/Edge 105+,
-  Safari 17.2+, Firefox 140+). Use `fallback: 'none'` to guarantee that even on
-  older browsers.
+  Safari 17.2+, Firefox 140+), the main and default strategy. Older browsers
+  get no wrapper tags either: by default nothing is painted there.
 - **Search-box helper:** `connectSearchInput()` gives you highlight-as-you-type,
   Enter / Shift+Enter navigation, Escape to clear, and a live "3 of 12" count in a few lines.
 - **Matches across element boundaries:** a phrase split across inline tags
@@ -169,19 +170,31 @@ the next match, Shift+Enter to the previous one, and Escape clears the box.
 
 ## Rendering strategies
 
-The matching engine produces DOM `Range`s; a **renderer** turns those into
-something visible. Three are built in, sharing one interface, so the same API
-(toggle, show-only, navigation, click, destroy) works with either.
+> **The CSS Custom Highlight API (`css-highlight`) is the main strategy.** It is
+> what term-highlight is built around, it is used automatically wherever the
+> browser supports it, and it never adds a tag to your page. The other
+> strategies exist only for edge cases.
 
-### `css-highlight`
+The matching engine produces DOM `Range`s; a **renderer** turns those into
+something visible. All renderers share one interface, so the same API (toggle,
+show-only, navigation, click, destroy) works with each.
+
+| Strategy            | Role                | Changes the DOM?       | When it's used                                           |
+| ------------------- | ------------------- | ---------------------- | -------------------------------------------------------- |
+| **`css-highlight`** | **Main strategy**   | **No**                 | Automatically, in every browser that supports the API.   |
+| `none`              | Default fallback    | No                     | Automatically, in browsers without the API.              |
+| `dom-span`          | Legacy, opt-in only | Yes (inserts `<mark>`) | Only when you pass `strategy` or `fallback: 'dom-span'`. |
+
+### `css-highlight` (main)
 
 Uses the [CSS Custom Highlight API](https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API):
 it registers `Highlight` objects (sets of `Range`s) in `CSS.highlights` and
 paints them with `::highlight()` rules in a single injected `<style>` element.
+That `<style>` tag goes in `<head>`; nothing is added to the content you are
+highlighting.
 
 - **No DOM mutation.** The text tree is untouched, so it never breaks event
-  listeners, React reconciliation, `contenteditable`, or layout. This is the
-  recommended strategy where available.
+  listeners, React reconciliation, `contenteditable`, or layout.
 - A single match may span multiple text nodes and elements — the underlying
   `Range` handles that natively.
 - **Styling is limited** to the properties valid inside `::highlight()`
@@ -193,49 +206,48 @@ paints them with `::highlight()` rules in a single injected `<style>` element.
 [Baseline "newly available" in June 2025](https://developer.mozilla.org/en-US/docs/Web/API/Highlight)
 — Chrome/Edge 105+, Safari 17.2+, and Firefox 140+.
 
-### `dom-span`
-
-Wraps each match in `<mark data-group="…">` elements, splitting text nodes as
-needed. A match that crosses element boundaries is wrapped as **one fragment per
-text-node segment**, all sharing the same `data-match-index` and group identity.
-Overlapping matches (with `overlapStrategy: 'allow-overlap'`) are nested.
-
-- Works **everywhere**, including older browsers.
-- Full CSS styling is available (it's a real element), and clicks use native DOM
-  events.
-- It **does mutate the DOM**. `destroy()` (and every `update()`) unwraps the
-  inserted elements and re-joins the split text nodes, restoring the original
-  tree.
-
-### `none`
+### `none` (default fallback)
 
 Runs matching, navigation, stats, and hover/click callbacks, but paints nothing
 and never touches the document: no elements, no `<style>` tag, no registry
-entries. Use it to drive your own UI (a results list, a minimap) or as the
-fallback when the DOM must never change:
+entries. It is what `auto` uses on browsers without the Highlight API, so the
+"no wrapper tags" promise holds everywhere. You can also choose it directly to
+drive your own UI, such as a results list or a minimap:
 
 ```ts
-// css-highlight where supported; elsewhere, no highlights but no DOM changes either.
-createHighlighter({ root, groups, fallback: 'none' });
+createHighlighter({ root, groups, strategy: 'none' });
+```
+
+### `dom-span` (legacy, opt-in)
+
+Wraps each match in `<mark data-group="…">` elements, splitting text nodes as
+needed. **This is the approach term-highlight was built to replace**, and it
+brings back the problems described in
+[Why highlight without `<span>` or `<mark>` tags](./docs/why-no-wrapper-tags.md).
+It is never chosen automatically. Use it only if you must show highlights on
+browsers without the Highlight API, or need box-model styling such as padding
+or borders.
+
+- Works in every browser.
+- Full CSS styling, and clicks use native DOM events.
+- It **mutates the DOM**. `destroy()` (and every `update()`) unwraps the
+  inserted elements and re-joins the split text nodes.
+- A match that crosses element boundaries is wrapped as one fragment per
+  text-node segment, all sharing the same `data-match-index`. Overlapping
+  matches (with `overlapStrategy: 'allow-overlap'`) are nested.
+
+```ts
+// Opt in: Highlight API where available, <mark> tags elsewhere.
+createHighlighter({ root, groups, fallback: 'dom-span' });
+// Opt in: always <mark> tags.
+createHighlighter({ root, groups, strategy: 'dom-span' });
 ```
 
 ### `auto` (default)
 
 Feature-detects `CSS.highlights` and the `Highlight` constructor. It uses
 `css-highlight` when both are present, otherwise the `fallback` option
-(`'dom-span'` by default, or `'none'`). You
-can read the resolved value from `highlighter.activeStrategy`.
-
-**When to force one:** pick `css-highlight` explicitly if you never support old
-browsers and want to guarantee the DOM is never touched; pick `dom-span`
-explicitly if you need box-model styling on highlights, must support browsers
-without the Highlight API, or rely on real elements being present in the DOM
-(e.g. for your own querying).
-
-```ts
-createHighlighter({ root, groups, strategy: 'css-highlight' });
-createHighlighter({ root, groups, strategy: 'dom-span' });
-```
+(`'none'` by default). Read the result from `highlighter.activeStrategy`.
 
 ## Click and hover detection
 
@@ -312,21 +324,21 @@ Creates a highlighter and runs the first matching pass immediately.
 
 ### `HighlighterOptions`
 
-| Option             | Type                                                | Default      | Description                                                                 |
-| ------------------ | --------------------------------------------------- | ------------ | --------------------------------------------------------------------------- |
-| `root`             | `HTMLElement`                                       | — (required) | Root element whose subtree is scanned.                                      |
-| `groups`           | `HighlightGroup[]`                                  | — (required) | Groups to highlight (may be empty; add more later).                         |
-| `strategy`         | `'auto' \| 'css-highlight' \| 'dom-span' \| 'none'` | `'auto'`     | Rendering strategy.                                                         |
-| `fallback`         | `'dom-span' \| 'none'`                              | `'dom-span'` | What `auto` uses when the Highlight API is missing.                         |
-| `exclude`          | `string` (CSS selector)                             | —            | Subtrees to skip, e.g. `'code, pre, [data-no-highlight]'`.                  |
-| `autoUpdate`       | `boolean \| { debounce?: number }`                  | `false`      | Re-match when the root subtree mutates, optionally debounced (ms).          |
-| `overlapStrategy`  | `'first-match' \| 'priority' \| 'allow-overlap'`    | `'priority'` | How to resolve overlapping matches.                                         |
-| `scroll`           | `false \| 'smooth' \| 'auto' \| 'instant'`          | `'smooth'`   | How navigation scrolls the current match to the centre of its container.    |
-| `currentStyle`     | `Partial<CSSStyleDeclaration>`                      | orange bg    | Style for the "current" match set by `next()` / `previous()` / `goTo()`.    |
-| `onHighlightClick` | `(match, event) => void`                            | —            | A highlight was clicked.                                                    |
-| `onHighlightHover` | `(match \| undefined, event) => void`               | —            | The pointer entered a highlight, or left all highlights (`undefined`).      |
-| `onUpdate`         | `(matches, stats) => void`                          | —            | After every matching pass (initial, `update()`, auto-update, group change). |
-| `onCurrentChange`  | `(match \| undefined, stats) => void`               | —            | The current match changed. Use it to render "3 of 12".                      |
+| Option             | Type                                                | Default      | Description                                                                   |
+| ------------------ | --------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- |
+| `root`             | `HTMLElement`                                       | — (required) | Root element whose subtree is scanned.                                        |
+| `groups`           | `HighlightGroup[]`                                  | — (required) | Groups to highlight (may be empty; add more later).                           |
+| `strategy`         | `'auto' \| 'css-highlight' \| 'none' \| 'dom-span'` | `'auto'`     | Rendering strategy. `auto` uses `css-highlight`, the main strategy.           |
+| `fallback`         | `'none' \| 'dom-span'`                              | `'none'`     | What `auto` uses without the Highlight API. `'dom-span'` opts in to `<mark>`. |
+| `exclude`          | `string` (CSS selector)                             | —            | Subtrees to skip, e.g. `'code, pre, [data-no-highlight]'`.                    |
+| `autoUpdate`       | `boolean \| { debounce?: number }`                  | `false`      | Re-match when the root subtree mutates, optionally debounced (ms).            |
+| `overlapStrategy`  | `'first-match' \| 'priority' \| 'allow-overlap'`    | `'priority'` | How to resolve overlapping matches.                                           |
+| `scroll`           | `false \| 'smooth' \| 'auto' \| 'instant'`          | `'smooth'`   | How navigation scrolls the current match to the centre of its container.      |
+| `currentStyle`     | `Partial<CSSStyleDeclaration>`                      | orange bg    | Style for the "current" match set by `next()` / `previous()` / `goTo()`.      |
+| `onHighlightClick` | `(match, event) => void`                            | —            | A highlight was clicked.                                                      |
+| `onHighlightHover` | `(match \| undefined, event) => void`               | —            | The pointer entered a highlight, or left all highlights (`undefined`).        |
+| `onUpdate`         | `(matches, stats) => void`                          | —            | After every matching pass (initial, `update()`, auto-update, group change).   |
+| `onCurrentChange`  | `(match \| undefined, stats) => void`               | —            | The current match changed. Use it to render "3 of 12".                        |
 
 ### `HighlightGroup`
 

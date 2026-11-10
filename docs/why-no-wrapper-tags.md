@@ -167,22 +167,25 @@ Being honest about what this approach can't do:
 - **Browser support.** The API is available in Chrome and Edge 105+, Safari
   17.2+, and Firefox 140+. Older browsers don't have it.
 
-## Older browsers: choose your fallback
+## Older browsers
 
-When the API is missing, `strategy: 'auto'` (the default) uses the `fallback`
-option:
+The CSS Custom Highlight API is term-highlight's main strategy, and the default
+`strategy: 'auto'` uses it wherever the browser supports it. When the API is
+missing, `auto` uses the `fallback` option:
 
-- `fallback: 'dom-span'` (the current default) wraps matches in `<mark>` tags
-  so highlights still appear. **This brings back the problems above** on those
-  browsers.
-- `fallback: 'none'` paints nothing on those browsers but **never touches the
-  DOM**. Matching, navigation, counts, and callbacks keep working.
-
-If wrapper tags must never appear, for example in a React app or an editor,
-set `fallback: 'none'`:
+- `fallback: 'none'` (**the default**) paints nothing on those browsers but
+  **never touches the DOM**. Matching, navigation, counts, and callbacks keep
+  working, so a search box still reports "3 of 12" and can step through results.
+- `fallback: 'dom-span'` (opt-in) wraps matches in `<mark>` tags so highlights
+  still appear. **This brings back the problems above** on those browsers, so
+  only choose it if visible highlights on old browsers matter more to you.
 
 ```ts
-createHighlighter({ root, groups, fallback: 'none' });
+// Default: never any wrapper tags.
+createHighlighter({ root, groups });
+
+// Opt in to <mark> tags where the Highlight API is missing.
+createHighlighter({ root, groups, fallback: 'dom-span' });
 ```
 
 You can check what is in use with `highlighter.activeStrategy`.
@@ -212,7 +215,6 @@ import { createHighlighter } from 'term-highlight';
 
 const h = createHighlighter({
   root: container,
-  fallback: 'none',
   groups: [{ name: 'hit', terms: [re], style: { backgroundColor: '#fff3a0' } }],
 });
 // later…
